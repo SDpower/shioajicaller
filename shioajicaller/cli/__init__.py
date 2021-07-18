@@ -28,5 +28,5 @@ The most commonly used git commands are:
     if not hasattr(locals(), args.command):
         print ('Unrecognized command')
         parser.print_help()
-        sys.exit(os.EX_SOFTWARE)
+        sys.exit(70)
     globals()[args.command]()

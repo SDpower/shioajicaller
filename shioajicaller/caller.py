@@ -18,7 +18,7 @@ class Caller(object):
         
         if self._userPassowrd == None or self._userPassowrd == "" or self._userID == None or self._userID == "":
             print("Error!! No UserId or UserPassowrd.")
-            sys.exit(os.EX_SOFTWARE)
+            sys.exit(70)
         self._connected = False
         self._api = sj.Shioaji()
         self._api.quote.set_quote_callback(self._quote_callback) 
