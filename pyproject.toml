@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "shioajicaller"
-version = "0.1.2"
+version = "0.1.2.dev"
 description = "shioaj warp caller"
 authors = ["Steve Lo <info@sd.idv.tw>"]
 license = "MIT"
@@ -13,6 +13,9 @@ python-dotenv = "^0.18.0"
 [tool.poetry.dev-dependencies]
 shioaji = "^0.3.2.dev4"
 python-dotenv = "^0.18.0"
+
+[tool.poetry.scripts]
+shioajicaller = "shioajicaller.cli:run"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
