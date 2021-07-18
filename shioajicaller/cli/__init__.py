@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import argparse, sys, os
+import argparse, sys
 from shioajicaller import Caller
 from shioajicaller.codes import __update_codes
 
