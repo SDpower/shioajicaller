@@ -1,19 +1,44 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import argparse, sys
-from shioajicaller import Caller
-from shioajicaller.codes import __update_codes
+from .. import Caller
+from ..codes import __update_codes
+from ..codes import __update_codes_redis
+from .. import config
 
 def update():
     parser = argparse.ArgumentParser(
         description='Update Code List')
     parser.add_argument('-u', '--user-id', nargs='+', help='Shioaji USER ID')
     parser.add_argument('-p', '--user-password', nargs='+' , help='Shioaji USER PASSWORD')
-    parser.add_argument('-t', '--type', action='store_true', help='output type only csv now')
+    parser.add_argument('-t', '--type', default='csv', help='output type csv or redis')
+    parser.add_argument('-rh', '--redis-host', default='127.0.0.1', help='redis host')
+    parser.add_argument('-rp', '--redis-port',type=int, default=6379, help='redis port')
+    parser.add_argument('-rdb', '--redis-db',type=int, default=0, help='reis db')
     args = parser.parse_args(sys.argv[2:])
     print('Start to update codes')
     callers = Caller(userId= args.user_id ,userPassowrd= args.user_password)
-    __update_codes(callers)
+    if (args.type == 'csv'):
+        # __update_codes(callers)
+        pass
+    elif(args.type == 'redis'):
+        if config.redisHost != None:
+            host = config.redisHost
+        else:
+            host = args.redis_host
+        
+        if config.redisPort != None:
+            port = int(config.redisPort)
+        else:
+            port = int(args.redis_port)
+        
+        if config.redisDb != None:
+            db = config.redisDb
+        else:
+            db = args.redis_db
+
+        __update_codes_redis(callers,host,port,db)
+        # pass
     print('Done!')
 
 def run():

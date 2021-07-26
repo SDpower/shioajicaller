@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys, os
-from shioajicaller import config
+from . import config
 import time
 import shioaji as sj
 

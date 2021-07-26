@@ -26,3 +26,18 @@ $ python main.py update -u YOUID -p YOU_PASSWORD
 $ shioajicaller update
 $ shioajicaller -u YOUID -p YOU_PASSWORD
 ```
+### 新增 redis
+```
+$ shioajicaller update -rh 127.0.0.1 -rp 6379 -rdb 0 -t redis
+$ shioajicaller -t redis -u YOUID -p YOU_PASSWORD
+```
+### ENV範例
+可使用環境變數與.env擋案
+
+```
+USER_ID=YOUID
+USER_PASSWORD=YOU_PASSWORD
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_DB=0
+```
