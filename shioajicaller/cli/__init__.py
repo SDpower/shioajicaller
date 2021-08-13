@@ -19,7 +19,7 @@ def update():
     print('Start to update codes')
     callers = Caller(userId= args.user_id ,userPassowrd= args.user_password)
     if (args.type == 'csv'):
-        # __update_codes(callers)
+        __update_codes(callers)
         pass
     elif(args.type == 'redis'):
         if config.redisHost != None:
