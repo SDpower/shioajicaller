@@ -100,15 +100,18 @@ def to_redis(results,redisHost: str,redisPort: int,redisDb: str,prefix = 'stock'
         return
     rServer= redis.StrictRedis(redisHost,redisPort,redisDb)
     for item in results:
-        if str(item["security_type"]) != "STK":
+        if prefix != "stock":
             key = f'{prefix}:{item.category}:{item.code}'
         else:
             key = f'{prefix}:{item.exchange}:{item.code}'
         jstr = json.dumps(item,cls=EmployeeEncoder)
         setObj = json.loads(jstr)
         rServer.hmset(key, setObj)
+        if prefix == "stock" and item.category !="00" and item.category !="":
+            key = f'{prefix}:{item.category}:{item.exchange}:{item.code}'
+            rServer.hmset(key, setObj)
 
-def __update_codes_redis(callers: Caller,redisHost: str,redisPort: int,redisDb: str):    
+def __update_codes_redis(callers: Caller,redisHost: str,redisPort: int,redisDb: str):
     TSEdata = callers.getContractsStocks("TSE")
     OTCdata = callers.getContractsStocks("OTC")
     if TSEdata != None and OTCdata != None :
@@ -120,7 +123,7 @@ def __update_codes_redis(callers: Caller,redisHost: str,redisPort: int,redisDb: 
         clear_redis(redisHost,redisPort,redisDb,prefix='futures')
         for Fitems in Futures:
             to_redis(Fitems, redisHost,redisPort,redisDb,prefix='futures')
-    
+
 
 def __update_codes(callers: Caller):
     resultStock=[]
