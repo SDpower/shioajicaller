@@ -106,12 +106,13 @@ def to_redis(results,redisHost: str,redisPort: int,redisDb: str,prefix = 'stock'
             key = f'{prefix}:{item.exchange}:{item.code}'
         jstr = json.dumps(item,cls=EmployeeEncoder)
         setObj = json.loads(jstr)
-        rServer.hmset(key, setObj)
+        rServer.hset(key,mapping=setObj)
         if prefix == "stock" and item.category !="00" and item.category !="":
             key = f'{prefix}:{item.category}:{item.exchange}:{item.code}'
-            rServer.hmset(key, setObj)
+            rServer.hset(key,mapping=setObj)
 
 def __update_codes_redis(callers: Caller,redisHost: str,redisPort: int,redisDb: str):
+    callers.Login()
     TSEdata = callers.getContractsStocks("TSE")
     OTCdata = callers.getContractsStocks("OTC")
     if TSEdata != None and OTCdata != None :
@@ -126,6 +127,7 @@ def __update_codes_redis(callers: Caller,redisHost: str,redisPort: int,redisDb: 
 
 
 def __update_codes(callers: Caller):
+    callers.Login()
     resultStock=[]
     TSEdata = callers.getContractsStocks("TSE")
     OTCdata = callers.getContractsStocks("OTC")
@@ -141,5 +143,5 @@ def __update_codes(callers: Caller):
 
 
 if __name__ == '__main__':
-    callers = Caller()
+    callers=Caller()
     __update_codes(callers)
