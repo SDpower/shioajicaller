@@ -13,6 +13,7 @@ class Caller(object):
         self._connected = False
         self._api = sj.Shioaji()
         logging.info("shioaji version:"+sj.__version__)
+        print("shioaji version:"+sj.__version__)
         self._api.quote.set_event_callback(self._event_callback)
         self._api.quote.set_on_tick_stk_v1_callback(self.Quote_callback_stk_v1_tick)
         self._api.quote.set_on_bidask_stk_v1_callback(self.Quote_callback_stk_v1_bidask)
@@ -78,8 +79,7 @@ class Caller(object):
     def Quote_callback_stk_v1_tick(self,exchange: Exchange, tick:TickSTKv1):
         tickdata = tick.to_dict(raw=True)
         tickdata['UNTime']= datetime.now()
-        # strMsg = json.dumps(tickdata, default=str)
-        # print(strMsg)
+        tickdata['exchange']= f'{exchange}'
         if hasattr(self, 'SubscribeStocksCallBack'):
             self.SubscribeStocksCallBack(tickdata)
 
@@ -89,8 +89,7 @@ class Caller(object):
     def Quote_callback_fop_v1_tick(self,exchange: Exchange, tick:TickFOPv1):
         tickdata = tick.to_dict(raw=True)
         tickdata['UNTime']= datetime.now()
-        # strMsg = json.dumps(tickdata, default=str)
-        # print(strMsg)
+        tickdata['exchange']= f'{exchange}'
         if hasattr(self, 'SubscribeFuturesCallBack'):
             self.SubscribeFuturesCallBack(tickdata)
 
@@ -113,13 +112,13 @@ class Caller(object):
                 "Description": Description,
                 }
             self.EventCallback(item)
-            # self.EventQueue.put_nowait(item)
-        #     print(f'EventQueue >>>> {ResponseCode} {Code} {Message} Event: {Description}')
 
-    def _check_connect(self, timeout=10, period=0.25):
-        # token timeout 24hr before 30sec will relogin
+    def _check_connect(self, timeout=30, period=0.25):
         if self._connected and (time.time() - self._connected_ts) < 86400-30:
             return self._accounts
+        # token timeout 24hr before 30sec will relogin
+        if self._connected and (time.time() - self._connected_ts) >= 86400-30:
+            self._api.logout()
         self.Login()
         mustend = time.time() + timeout
         while time.time() < mustend:
@@ -127,6 +126,12 @@ class Caller(object):
             time.sleep(period)
         return False
 
+    ## OTC, TSE
+    def getContractsIndexs(self,Exchange:str):
+        if (self._check_connect()):
+            return self._api.Contracts.Indexs[Exchange]
+
+    ## OES, OTC, TSE
     def getContractsStocks(self,Exchange:str):
         if (self._check_connect()):
             return self._api.Contracts.Stocks[Exchange]
@@ -135,12 +140,19 @@ class Caller(object):
         if (self._check_connect()):
             return self._api.Contracts.Stocks[Code]
 
-    def getContractsFutures(self,Name=""):
+    def getContractsFutures(self,Code:str=""):
         if (self._check_connect()):
-            if Name == "":
+            if Code == "":
                 return self._api.Contracts.Futures
             else:
-                return self._api.Contracts.Futures[Name]
+                return self._api.Contracts.Futures[Code]
+
+    def getContractsOptions(self,Code:str=""):
+        if (self._check_connect()):
+            if Code == "":
+                return self._api.Contracts.Options
+            else:
+                return self._api.Contracts.Options[Code]
 
     def __del__(self):
         del self._api

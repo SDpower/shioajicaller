@@ -39,6 +39,19 @@ FutureRow = namedtuple('Future', [
                         'reference',
                         'update_date'])
 
+OptionRow = namedtuple('Option', [
+                'code',
+                'symbol',
+                'name',
+                'category',
+                'delivery_month',
+                'strike_price',
+                'option_right',
+                'underlying_kind',
+                'limit_up',
+                'limit_down',
+                'update_date'])
+
 def to_csv(result,path):
     if (len(result) > 0):
         with open(path, 'w', newline='', encoding='utf_8') as csvfile:
@@ -67,6 +80,22 @@ def toFutureRowData(result,data):
                 item["limit_up"],
                 item["limit_down"],
                 item["reference"],
+                item["update_date"]))
+
+def toOptionRowData(result,data):
+    if (data != None):
+        for item in data:
+            result.append(OptionRow(
+                item["code"],
+                item["symbol"],
+                item["name"],
+                item["category"],
+                item["delivery_month"],
+                item["strike_price"],
+                item["option_right"],
+                item["underlying_kind"],
+                item["limit_up"],
+                item["limit_down"],
                 item["update_date"]))
 
 def toStockRowData(result,data):
@@ -124,6 +153,11 @@ def __update_codes_redis(callers: Caller,redisHost: str,redisPort: int,redisDb: 
         clear_redis(redisHost,redisPort,redisDb,prefix='futures')
         for Fitems in Futures:
             to_redis(Fitems, redisHost,redisPort,redisDb,prefix='futures')
+    Options = callers.getContractsOptions()
+    if Options != None :
+        clear_redis(redisHost,redisPort,redisDb,prefix='options')
+        for Oitems in Options:
+            to_redis(Oitems, redisHost,redisPort,redisDb,prefix='options')
 
 
 def __update_codes(callers: Caller):
@@ -137,9 +171,16 @@ def __update_codes(callers: Caller):
 
     resultFutures=[]
     Futures = callers.getContractsFutures()
-    for Fitems in Futures:
-        toFutureRowData(resultFutures,Fitems)
-    to_csv(resultFutures, 'Futures.csv')
+    if Futures != None :
+        for Fitems in Futures:
+            toFutureRowData(resultFutures,Fitems)
+        to_csv(resultFutures, 'Futures.csv')
+    resultOptions=[]
+    Options = callers.getContractsOptions()
+    if Options != None :
+        for Oitems in Options:
+            toOptionRowData(resultOptions,Oitems)
+        to_csv(resultOptions, 'Options.csv')
 
 
 if __name__ == '__main__':

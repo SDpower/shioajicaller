@@ -3,7 +3,9 @@ import asyncio
 import aioredis
 import sys,json
 import logging
+import time
 import websockets
+from gmqtt import Client as MQTTClient
 import uvloop
 from ..caller import Caller
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -22,10 +24,38 @@ class WebsocketsHandler():
         self._eventQueue = asyncio.Queue()
         self._subscribeStocksQueue = asyncio.Queue()
         self._subscribeFuturesQueue = asyncio.Queue()
+        self._subscribeClientS = set()
 
         self._callers.SetEnevtCallBack(self.EnevtCallBack)
         self._callers.SetSubscribeStocksCallBack(self.SubscribeStocksCallBack)
         self._callers.SetSubscribeFuturesCallBack(self.SubscribeFuturesCallBack)
+
+    def _on_connect(self, client, flags, rc, properties):
+        logging.info('Mqtt Connected')
+
+    def _on_message(self, client, topic, payload, qos, properties):
+        logging.debug('RECV MSG:', payload)
+
+    def _on_disconnect(self, client, packet, exc=None):
+        logging.warning('Mqtt Disconnected')
+
+    def _on_subscribe(self, client, mid, qos, properties):
+        logging.info('Mqtt subscribed')
+
+    async def SetMqttConnection(self,mqttHost: str,mqttUser: str,mqttPassword: str):
+        _timestamp =round(time.time() * 1000)
+        self._mqttClient = MQTTClient(f"shioajiCaller-{_timestamp}", receive_maximum=24000, session_expiry_interval=60)
+        self._mqttClient.on_connect = self._on_connect
+        self._mqttClient.on_message = self._on_message
+        self._mqttClient.on_disconnect = self._on_disconnect
+        self._mqttClient.on_subscribe = self._on_subscribe
+
+        logging.info(f"SetMqttConnection! {mqttHost} {mqttUser} {mqttPassword}")
+
+        self._mqttClient.set_auth_credentials(mqttUser, mqttPassword)
+        await self._mqttClient.connect(mqttHost, keepalive=30)
+        await STOP.wait()
+        await self._mqttClient.disconnect()
 
     def SetRedisConnection(self,redisHost: str,redisPort: int,redisDb: str):
         self._redis = aioredis.Redis(
@@ -72,9 +102,15 @@ class WebsocketsHandler():
             strMsg = json.dumps(ret, default=str)
             logging.debug(f'EnevtWorker<< {strMsg}')
             websockets.broadcast(ClientS, strMsg)
-            if self._redis:
-                logging.debug(f'Redis publish >> {strMsg}')
-                await self._redis.publish("shioaji.system", strMsg)
+            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                PstrMsg = json.dumps(Item, default=str)
+                if hasattr(self,"_redis"):
+                    logging.debug(f'Redis publish >> {PstrMsg}')
+                    await self._redis.publish("shioaji.system", PstrMsg)
+                if hasattr(self,"_mqttClient"):
+                    logging.debug(f'Mqtt publish >> {PstrMsg}')
+                    mqtttopic = f'Shioaji/v1/system'
+                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
             counter += 1
             self._eventQueue.task_done()
 
@@ -83,13 +119,21 @@ class WebsocketsHandler():
         logging.info(f'{name} start!')
         while True:
             Item = await self._subscribeStocksQueue.get()
-            ret = {"type":"StocksEvent","ret":Item}
-            strMsg = json.dumps(ret, default=str)
-            websockets.broadcast(ClientS, strMsg)
-            if self._redis:
-                logging.debug(f'Redis publish >> {Item}')
-                await self._redis.publish(f'shioaji.stocks.{Item["code"]}.tick', strMsg)
-            logging.debug(f'SubscribeStocksWorker<< {strMsg}')
+            if len(self._subscribeClientS)>0:
+                ret = {"type":"StocksEvent","ret":Item}
+                strMsg = json.dumps(ret, default=str)
+                websockets.broadcast(self._subscribeClientS, strMsg)
+
+            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                PstrMsg = json.dumps(Item, default=str)
+                if hasattr(self,"_redis"):
+                    logging.debug(f'Redis publish >> {PstrMsg}')
+                    await self._redis.publish(f'shioaji.stocks.tick.{Item["code"]}', PstrMsg)
+                if hasattr(self,"_mqttClient"):
+                    logging.debug(f'Mqtt publish >> {PstrMsg}')
+                    mqtttopic = f'Shioaji/v1/stocks/tick/{Item["code"]}'
+                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+            logging.debug(f'SubscribeStocksWorker<< {Item}')
             counter += 1
             self._subscribeStocksQueue.task_done()
 
@@ -98,12 +142,19 @@ class WebsocketsHandler():
         logging.info(f'{name} start!')
         while True:
             Item = await self._subscribeFuturesQueue.get()
-            ret = {"type":"FuturesEvent","ret":Item}
-            strMsg = json.dumps(ret, default=str)
-            websockets.broadcast(ClientS, strMsg)
-            if self._redis:
-                logging.debug(f'Redis publish >> {Item}')
-                await self._redis.publish(f'shioaji.futures.{Item["code"]}.tick', strMsg)
+            if len(self._subscribeClientS)>0:
+                ret = {"type":"FuturesEvent","ret":Item}
+                strMsg = json.dumps(ret, default=str)
+                websockets.broadcast(self._subscribeClientS, strMsg)
+            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                PstrMsg = json.dumps(Item, default=str)
+                if hasattr(self,"_redis"):
+                    logging.debug(f'Redis publish >> {PstrMsg}')
+                    await self._redis.publish(f'shioaji.futures.tick.{Item["code"]}', PstrMsg)
+                if hasattr(self,"_mqttClient"):
+                    logging.debug(f'Mqtt publish >> {PstrMsg}')
+                    mqtttopic = f'Shioaji/v1/futures/tick/{Item["code"]}'
+                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
             logging.debug(f'SubscribeFuturesWorker<< {Item}')
             counter += 1
             self._subscribeFuturesQueue.task_done()
@@ -130,8 +181,22 @@ class WebsocketsHandler():
 
     async def cmdID(self,wsclient):
         # {"cmd":"ID"}
-        ret = {"type": "response"}
+        ret = {"type": "response","ret":True}
         ret["id"] = f'{self._websocket.id}'
+        self._subscribeClientS.add(wsclient)
+        await wsclient.send(json.dumps(ret, default=str))
+
+    async def cmdGetsubscribEvents(self,wsclient):
+        # {"cmd":"GetsubscribEvents"}
+        ret = {"type": "response","ret":True}
+        self._subscribeClientS.discard(wsclient)
+        self._subscribeClientS.add(wsclient)
+        await wsclient.send(json.dumps(ret, default=str))
+
+    async def cmdRemovesubscribEvents(self,wsclient):
+        # {"cmd":"RemovesubscribEvents"}
+        ret = {"type": "response","ret":True}
+        self._subscribeClientS.discard(wsclient)
         await wsclient.send(json.dumps(ret, default=str))
 
     async def cmdGetAccount(self,wsclient):
@@ -145,7 +210,7 @@ class WebsocketsHandler():
         await wsclient.send(json.dumps(ret, default=str))
 
     async def cmdSubscribeStocks(self,wsclient,**keyword_params):
-        # {"cmd":"SubscribeStocks","params":{"code":"5608","quote_type":"tick"}}
+        # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"tick"}}
         ret = {"type": "response", "status": self._callers.SubscribeStocks(**keyword_params)}
         await wsclient.send(json.dumps(ret, default=str))
 
@@ -155,6 +220,8 @@ class WebsocketsHandler():
     def checkFormateMessage(self,message):
         try:
             return json.loads(message)
+        except:
+            pass
         finally:
             pass
 
@@ -189,7 +256,8 @@ async def start_server(port=6789):
     return None
 
 def __start_wss_server(port:int=6789,callers:Caller=Caller(),pool_size:int=50,debug:int=logging.WARNING,
-    with_redis:bool=False,redisHost:str=None,redisPort:int=6379,redisDb:str="0"):
+    with_redis:bool=False,redisHost:str=None,redisPort:int=6379,redisDb:str="0",
+    with_mqtt:bool=False,mqttHost:str=None,mqttUser:str="",mqttPassword:str=""):
     WebsocketsHandler.SetCallers(callers)
     if with_redis:
         WebsocketsHandler.SetRedisConnection(redisHost,redisPort,redisDb)
@@ -199,8 +267,11 @@ def __start_wss_server(port:int=6789,callers:Caller=Caller(),pool_size:int=50,de
         loop.set_debug(True)
     task = None
     try:
+        if with_mqtt:
+            loop.create_task(WebsocketsHandler.SetMqttConnection(mqttHost,mqttUser,mqttPassword))
         loop.create_task(WebsocketsHandler.EnevtWorker('EnevtWorker-1'))
         loop.create_task(WebsocketsHandler.CmdWorker('CmdWorker-1'))
+
         for i in range(pool_size):
             loop.create_task(WebsocketsHandler.SubscribeStocksWorker(f'SubscribeStocksWorker-{i}'))
             loop.create_task(WebsocketsHandler.SubscribeFuturesWorker(f'SubscribeFuturesWorker-{i}'))

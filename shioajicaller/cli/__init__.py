@@ -58,31 +58,52 @@ def websockets():
     parser.add_argument('-rh', '--redis-host', default='127.0.0.1', help='redis host')
     parser.add_argument('-rp', '--redis-port',type=int, default=6379, help='redis port')
     parser.add_argument('-rdb', '--redis-db',type=int, default=0, help='reis db')
+    parser.add_argument('-wm', '--with-mqtt', action="store_true", help='with mqtt publish.')
+    parser.add_argument('-mh', '--mqtt-host', default='127.0.0.1', help='mqtt host')
+    parser.add_argument('-mu', '--mqtt-user',type=str, default='', help='mqtt user')
+    parser.add_argument('-mp', '--mqtt-password',type=str, default='', help='mqtt password')
     parser.add_argument("-v", "--verbosity", action="count",
                     help="increase output verbosity")
     args = parser.parse_args(sys.argv[2:])
-    if config.WebsocketsPort != None:
-        wsport = int(config.WebsocketsPort)
+    if config.websocketsPort != None:
+        wsport = int(config.websocketsPort)
     else:
         wsport = int(args.websockets_port)
 
-    args_redis = dict()
+    args_more = dict()
     if (args.with_redis):
-        args_redis["with_redis"]=True
+        args_more["with_redis"]=True
         if config.redisHost != None:
-            args_redis["redisHost"] = config.redisHost
+            args_more["redisHost"] = config.redisHost
         else:
-            args_redis["redisHost"] = args.redis_host
+            args_more["redisHost"] = args.redis_host
 
         if config.redisPort != None:
-            args_redis["redisPort"] = int(config.redisPort)
+            args_more["redisPort"] = int(config.redisPort)
         else:
-            args_redis["redisPort"] = int(args.redis_port)
+            args_more["redisPort"] = int(args.redis_port)
 
         if config.redisDb != None:
-            args_redis["redisDb"] = config.redisDb
+            args_more["redisDb"] = config.redisDb
         else:
-            args_redis["redisDb"] = args.redis_db
+            args_more["redisDb"] = args.redis_db
+
+    if (args.with_mqtt):
+        args_more["with_mqtt"]=True
+        if config.mqttHost != None:
+            args_more["mqttHost"] = config.mqttHost
+        else:
+            args_more["mqttHost"] = args.mqtt_host
+
+        if config.mqttUser != None:
+            args_more["mqttUser"] = config.mqttUser
+        else:
+            args_more["mqttUser"] = args.mqtt_user
+
+        if config.redisDb != None:
+            args_more["mqttPassword"] = config.mqttPassword
+        else:
+            args_more["mqttPassword"] = args.mqtt_password
 
     if args.verbosity == 1:
         debug = logging.INFO
@@ -95,9 +116,9 @@ def websockets():
     if args.user_id != None and args.user_password != None:
         callers = Caller()
         callers.SetAccount(userId= args.user_id ,userPassowrd= args.user_password)
-        __start_wss_server(port=wsport, callers=callers, pool_size=args.pool_size, debug=debug, **args_redis)
+        __start_wss_server(port=wsport, callers=callers, pool_size=args.pool_size, debug=debug, **args_more)
     else:
-        __start_wss_server(port=wsport, pool_size=args.pool_size, debug=debug, **args_redis)
+        __start_wss_server(port=wsport, pool_size=args.pool_size, debug=debug, **args_more)
 
 
 def run():
