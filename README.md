@@ -3,6 +3,7 @@ Shioaji Warp Caller P.O.C project.
 # 簡介
 因為Shioaji API只能有五個連線，且有訂閱上限制。 如果你有多個分開程式需要處理，就會佔用重複資源。
 透過Websocket服務將API擴充為誇平台，你要寫網頁下單機也沒問題。
+
 透過取得Shioaji所擴充的功能：
 * 所有Contracts
     * 輸出檔案
@@ -12,6 +13,8 @@ Shioaji Warp Caller P.O.C project.
         * 期貨 輸出檔案(`Futures.csv`)
         * 選擇權 輸出檔案(`Options.csv`)
     * 存入Redis
+    * 每日更新即可不用每次都要去查詢API，最好方式開盤前先執行跑一次。
+    * 輸出為csv 檔案 很方便，使用編碼為UTF8請注意。
 * Websocket服務
     * 訂閱Subscribe或取消
         * 股票
@@ -40,8 +43,6 @@ Shioaji Warp Caller P.O.C project.
         * Shioaji系統回傳
             * {"type":"SystemEvent"..........
 
-每日更新即可不用每次都要去查詢API，最好方式開盤前先執行跑一次。
-輸出為csv 檔案 很方便，使用編碼為UTF8請注意。
 ## 範例Example
 這裡說明範例，參數避免暴露請自行建立.env檔案就可以不用給帳號密碼參數。
 
@@ -98,7 +99,7 @@ shioaji version:0.3.3.dev3
 Start Websockets Server Port:6789
 ```
 
-### cleint 範例
+### Client 範例
 
 下方可以看到個指令接收狀況與系統回傳
 ```
@@ -139,8 +140,6 @@ Connected to ws://127.0.0.1:6789/.
   {"cmd":"RemovesubscribEvents"}
 < {"type": "response", "ret": true}
 ```
-
-
 
 ### 安全事項免責聲明
 
