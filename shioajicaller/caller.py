@@ -24,13 +24,21 @@ class Caller(object):
         if callable(callback):
             self.EventCallback=callback
 
-    def SetSubscribeStocksCallBack(self,callback):
+    def SetSubscribeStocksTickCallBack(self,callback):
         if callable(callback):
-            self.SubscribeStocksCallBack= callback
+            self.SubscribeStocksTickCallBack= callback
 
-    def SetSubscribeFuturesCallBack(self,callback):
+    def SetSubscribeFuturesTickCallBack(self,callback):
         if callable(callback):
-            self.SubscribeFuturesCallBack= callback
+            self.SubscribeFuturesTickCallBack= callback
+
+    def SetSubscribeStocksBidaskCallBack(self,callback):
+        if callable(callback):
+            self.SubscribeStocksBidaskCallBack= callback
+
+    def SetSubscribeFuturesBidaskCallBack(self,callback):
+        if callable(callback):
+            self.SubscribeFuturesBidaskCallBack= callback
 
     def SetAccount(self,userId:str="",userPassowrd:str=""):
         if userId != None and userId !="":
@@ -91,21 +99,29 @@ class Caller(object):
         tickdata = tick.to_dict(raw=True)
         tickdata['UNTime']= datetime.now()
         tickdata['exchange']= f'{exchange}'
-        if hasattr(self, 'SubscribeStocksCallBack'):
-            self.SubscribeStocksCallBack(tickdata)
+        if hasattr(self, 'SubscribeStocksTickCallBack'):
+            self.SubscribeStocksTickCallBack(tickdata)
 
-    def Quote_callback_stk_v1_bidask(exchange: Exchange, bidask:BidAskSTKv1):
-        print(f"Exchange: {exchange}, BidAsk: {bidask}")
+    def Quote_callback_stk_v1_bidask(self,exchange: Exchange, bidask:BidAskSTKv1):
+        bidaskdata = bidask.to_dict(raw=True)
+        bidaskdata['UNTime']= datetime.now()
+        bidaskdata['exchange']= f'{exchange}'
+        if hasattr(self, 'SubscribeStocksBidaskCallBack'):
+            self.SubscribeStocksBidaskCallBack(bidaskdata)
 
     def Quote_callback_fop_v1_tick(self,exchange: Exchange, tick:TickFOPv1):
         tickdata = tick.to_dict(raw=True)
         tickdata['UNTime']= datetime.now()
         tickdata['exchange']= f'{exchange}'
-        if hasattr(self, 'SubscribeFuturesCallBack'):
-            self.SubscribeFuturesCallBack(tickdata)
+        if hasattr(self, 'SubscribeFuturesTickCallBack'):
+            self.SubscribeFuturesTickCallBack(tickdata)
 
-    def Quote_callback_fop_v1_bidask(exchange: Exchange, bidask:BidAskFOPv1):
-        print(f"Exchange: {exchange}, BidAsk: {bidask}")
+    def Quote_callback_fop_v1_bidask(self,exchange: Exchange, bidask:BidAskFOPv1):
+        bidaskdata = bidask.to_dict(raw=True)
+        bidaskdata['UNTime']= datetime.now()
+        bidaskdata['exchange']= f'{exchange}'
+        if hasattr(self, 'SubscribeFuturesBidaskCallBack'):
+            self.SubscribeFuturesBidaskCallBack(bidaskdata)
 
     def Quote_callback(self,topic: str, quote: dict):
         print(f"Tpoic:{topic} Quote: {quote}")

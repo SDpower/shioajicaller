@@ -19,13 +19,17 @@ Shioaji Warp Caller P.O.C project.
     * 訂閱Subscribe或取消
         * 股票
             * 指令範例：{"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"tick"}}
-        * 期貨 
+            * 指令範例：{"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"bidask"}}
+        * 期貨
             * 指令範例：{"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"tick"}}
-    * Clinet 
+            * 指令範例：{"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"bidask"}}
+    * Clinet
         * 取的client的連線ID
             * 指令範例：{"cmd":"ID"}
         * 取的Shioaji 連線帳戶資訊
             * 指令範例：{"cmd":"GetAccount"}
+        * 登出 Shioaji 連線
+            * {"cmd":"Logout"}
         * 接收Subscribe資料
             * 指令範例：{"cmd":"GetsubscribEvents"}
         * 取消接收接收Subscribe資料
@@ -38,8 +42,10 @@ Shioaji Warp Caller P.O.C project.
         * 命令回傳
             * {"type": "response".....
         * 訂閱資料回傳
-            * {"type": "StocksEvent"........
-            * {"type": "FuturesEvent"........
+            * {"type": "StocksTickEvent"........
+            * {"type": "FuturesTickEvent"........
+            * {"type": "StocksBidaskEvent"........
+            * {"type": "FuturesBidaskEvent"........
         * Shioaji系統回傳
             * {"type":"SystemEvent"..........
 
@@ -145,4 +151,4 @@ Connected to ws://127.0.0.1:6789/.
 
 1. 目前系統設計皆未使用加密連線，請自行做好安全控管。
 2. 任何使用本程式不擔保任何損失且皆與本系統無關請自己負責。
-3. 不擔保其正確性、即時性或完整性。 
+3. 不擔保其正確性、即時性或完整性。

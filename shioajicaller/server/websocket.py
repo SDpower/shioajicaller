@@ -22,13 +22,17 @@ class WebsocketsHandler():
         self._callers = callers
         self._cmdQueue = asyncio.Queue()
         self._eventQueue = asyncio.Queue()
-        self._subscribeStocksQueue = asyncio.Queue()
-        self._subscribeFuturesQueue = asyncio.Queue()
+        self._subscribeStocksTickQueue = asyncio.Queue()
+        self._subscribeFuturesTickQueue = asyncio.Queue()
+        self._subscribeStocksBidaskQueue = asyncio.Queue()
+        self._subscribeFuturesBidaskQueue = asyncio.Queue()
         self._subscribeClientS = set()
 
         self._callers.SetEnevtCallBack(self.EnevtCallBack)
-        self._callers.SetSubscribeStocksCallBack(self.SubscribeStocksCallBack)
-        self._callers.SetSubscribeFuturesCallBack(self.SubscribeFuturesCallBack)
+        self._callers.SetSubscribeStocksTickCallBack(self.SubscribeStocksTickCallBack)
+        self._callers.SetSubscribeFuturesTickCallBack(self.SubscribeFuturesTickCallBack)
+        self._callers.SetSubscribeStocksBidaskCallBack(self.SubscribeStocksBidaskCallBack)
+        self._callers.SetSubscribeFuturesBidaskCallBack(self.SubscribeFuturesBidaskCallBack)
 
     def _on_connect(self, client, flags, rc, properties):
         logging.info('Mqtt Connected')
@@ -71,11 +75,17 @@ class WebsocketsHandler():
     def EnevtCallBack(self,item):
         loop.call_soon_threadsafe(self._eventQueue.put_nowait, item)
 
-    def SubscribeStocksCallBack(self,item):
-        loop.call_soon_threadsafe(self._subscribeStocksQueue.put_nowait, item)
+    def SubscribeStocksTickCallBack(self,item):
+        loop.call_soon_threadsafe(self._subscribeStocksTickQueue.put_nowait, item)
 
-    def SubscribeFuturesCallBack(self,item):
-        loop.call_soon_threadsafe(self._subscribeFuturesQueue.put_nowait, item)
+    def SubscribeFuturesTickCallBack(self,item):
+        loop.call_soon_threadsafe(self._subscribeFuturesTickQueue.put_nowait, item)
+
+    def SubscribeStocksBidaskCallBack(self,item):
+        loop.call_soon_threadsafe(self._subscribeStocksBidaskQueue.put_nowait, item)
+
+    def SubscribeFuturesBidaskCallBack(self,item):
+        loop.call_soon_threadsafe(self._subscribeFuturesBidaskQueue.put_nowait, item)
 
     async def CmdWorker(self,name):
         counter = 0
@@ -114,13 +124,58 @@ class WebsocketsHandler():
             counter += 1
             self._eventQueue.task_done()
 
-    async def SubscribeStocksWorker(self,name):
+    async def SubscribeStocksBidaskWorker(self,name):
         counter = 0
         logging.info(f'{name} start!')
         while True:
-            Item = await self._subscribeStocksQueue.get()
+            Item = await self._subscribeStocksBidaskQueue.get()
             if len(self._subscribeClientS)>0:
-                ret = {"type":"StocksEvent","ret":Item}
+                ret = {"type":"StocksBidaskEvent","ret":Item}
+                strMsg = json.dumps(ret, default=str)
+                websockets.broadcast(self._subscribeClientS, strMsg)
+
+            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                PstrMsg = json.dumps(Item, default=str)
+                if hasattr(self,"_redis"):
+                    logging.debug(f'Redis publish >> {PstrMsg}')
+                    await self._redis.publish(f'shioaji.stocks.bidask.{Item["code"]}', PstrMsg)
+                if hasattr(self,"_mqttClient"):
+                    logging.debug(f'Mqtt publish >> {PstrMsg}')
+                    mqtttopic = f'Shioaji/v1/stocks/bidask/{Item["code"]}'
+                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+            logging.debug(f'SubscribeStocksBidaskWorker<< {Item}')
+            counter += 1
+            self._subscribeStocksBidaskQueue.task_done()
+
+    async def SubscribeFuturesBidaskWorker(self,name):
+        counter = 0
+        logging.info(f'{name} start!')
+        while True:
+            Item = await self._subscribeFuturesBidaskQueue.get()
+            if len(self._subscribeClientS)>0:
+                ret = {"type":"FuturesBidaskEvent","ret":Item}
+                strMsg = json.dumps(ret, default=str)
+                websockets.broadcast(self._subscribeClientS, strMsg)
+            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                PstrMsg = json.dumps(Item, default=str)
+                if hasattr(self,"_redis"):
+                    logging.debug(f'Redis publish >> {PstrMsg}')
+                    await self._redis.publish(f'shioaji.futures.bidask.{Item["code"]}', PstrMsg)
+                if hasattr(self,"_mqttClient"):
+                    logging.debug(f'Mqtt publish >> {PstrMsg}')
+                    mqtttopic = f'Shioaji/v1/futures/bidask/{Item["code"]}'
+                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+            logging.debug(f'SubscribeFuturesBidaskWorker<< {Item}')
+            counter += 1
+            self._subscribeFuturesBidaskQueue.task_done()
+
+    async def SubscribeStocksTickWorker(self,name):
+        counter = 0
+        logging.info(f'{name} start!')
+        while True:
+            Item = await self._subscribeStocksTickQueue.get()
+            if len(self._subscribeClientS)>0:
+                ret = {"type":"StocksTickEvent","ret":Item}
                 strMsg = json.dumps(ret, default=str)
                 websockets.broadcast(self._subscribeClientS, strMsg)
 
@@ -133,17 +188,17 @@ class WebsocketsHandler():
                     logging.debug(f'Mqtt publish >> {PstrMsg}')
                     mqtttopic = f'Shioaji/v1/stocks/tick/{Item["code"]}'
                     self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
-            logging.debug(f'SubscribeStocksWorker<< {Item}')
+            logging.debug(f'SubscribeStocksTickWorker<< {Item}')
             counter += 1
-            self._subscribeStocksQueue.task_done()
+            self._subscribeStocksTickQueue.task_done()
 
-    async def SubscribeFuturesWorker(self,name):
+    async def SubscribeFuturesTickWorker(self,name):
         counter = 0
         logging.info(f'{name} start!')
         while True:
-            Item = await self._subscribeFuturesQueue.get()
+            Item = await self._subscribeFuturesTickQueue.get()
             if len(self._subscribeClientS)>0:
-                ret = {"type":"FuturesEvent","ret":Item}
+                ret = {"type":"FuturesTickEvent","ret":Item}
                 strMsg = json.dumps(ret, default=str)
                 websockets.broadcast(self._subscribeClientS, strMsg)
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
@@ -155,9 +210,9 @@ class WebsocketsHandler():
                     logging.debug(f'Mqtt publish >> {PstrMsg}')
                     mqtttopic = f'Shioaji/v1/futures/tick/{Item["code"]}'
                     self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
-            logging.debug(f'SubscribeFuturesWorker<< {Item}')
+            logging.debug(f'SubscribeFuturesTickWorker<< {Item}')
             counter += 1
-            self._subscribeFuturesQueue.task_done()
+            self._subscribeFuturesTickQueue.task_done()
 
     async def run(self,websocket,message):
         self._message = message
@@ -280,8 +335,10 @@ def __start_wss_server(port:int=6789,callers:Caller=Caller(),pool_size:int=50,de
         loop.create_task(WebsocketsHandler.CmdWorker('CmdWorker-1'))
 
         for i in range(pool_size):
-            loop.create_task(WebsocketsHandler.SubscribeStocksWorker(f'SubscribeStocksWorker-{i}'))
-            loop.create_task(WebsocketsHandler.SubscribeFuturesWorker(f'SubscribeFuturesWorker-{i}'))
+            loop.create_task(WebsocketsHandler.SubscribeStocksTickWorker(f'SubscribeStocksTickWorker-{i}'))
+            loop.create_task(WebsocketsHandler.SubscribeFuturesTickWorker(f'SubscribeFuturesTickWorker-{i}'))
+            loop.create_task(WebsocketsHandler.SubscribeStocksBidaskWorker(f'SubscribeStocksBidaskWorker-{i}'))
+            loop.create_task(WebsocketsHandler.SubscribeFuturesBidaskWorker(f'SubscribeFuturesBidaskWorker-{i}'))
 
         task = asyncio.ensure_future(start_server(port))
         loop.run_until_complete(task)
