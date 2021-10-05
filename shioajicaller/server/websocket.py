@@ -204,13 +204,20 @@ class WebsocketsHandler():
         cmd =  {"cmd":"GetAccount","wsclient":wsclient}
         loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
 
+    async def cmdLogout(self,wsclient):
+        # {"cmd":"Logout"}
+        ret = {"type": "response", "ret": self._callers.LogOut()}
+        await wsclient.send(json.dumps(ret, default=str))
+
     async def cmdSubscribeFutures(self,wsclient,**keyword_params):
         # {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"tick"}}
+        # {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"bidask"}}
         ret = {"type": "response", "status": self._callers.SubscribeFutures(**keyword_params)}
         await wsclient.send(json.dumps(ret, default=str))
 
     async def cmdSubscribeStocks(self,wsclient,**keyword_params):
         # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"tick"}}
+        # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"bidask"}}
         ret = {"type": "response", "status": self._callers.SubscribeStocks(**keyword_params)}
         await wsclient.send(json.dumps(ret, default=str))
 

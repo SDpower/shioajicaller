@@ -47,7 +47,18 @@ class Caller(object):
         if self._userPassowrd == None or self._userPassowrd == "" or self._userID == None or self._userID == "":
             logging.error("Error!! No UserId or UserPassowrd.")
             sys.exit(70)
-        self._accounts = self._api.login(self._userID, self._userPassowrd)
+        self._accounts = self._api.login(self._userID, self._userPassowrd,contracts_cb = self.ContractsDone())
+
+    def LogOut(self):
+        self._connected = False
+        self._connected_ts = None
+        ret = self._api.logout()
+        self._api.Contracts = None
+        logging.info(f"LogOut.")
+        return ret
+
+    def ContractsDone(self):
+        logging.info(f"Loading Contracts is Done.")
 
     def SubscribeStocks(self,code:str="",quote_type:str="tick",intraday_odd:bool=False,version:str="v1"):
         if (code == None or code ==""):
@@ -118,7 +129,7 @@ class Caller(object):
             return self._accounts
         # token timeout 24hr before 30sec will relogin
         if self._connected and (time.time() - self._connected_ts) >= 86400-30:
-            self._api.logout()
+            self.LogOut
         self.Login()
         mustend = time.time() + timeout
         while time.time() < mustend:
