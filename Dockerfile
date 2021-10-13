@@ -15,4 +15,4 @@ ENV LC_ALL en_US.UTF-8
 
 ENV PATH /usr/local/bin:$PATH
 EXPOSE 6789
-CMD ["/bin/bash"]
+ENTRYPOINT [ "/usr/local/bin/python3" ]
