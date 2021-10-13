@@ -93,13 +93,18 @@ class WebsocketsHandler():
         while True:
             Item = await self._cmdQueue.get()
             logging.debug(f'CmdWorker<< {Item["cmd"]}')
-            if Item["cmd"] == 'GetAccount':
-                websocket = Item["wsclient"]
-                ret = {"type": "response"}
-                account = self._callers.GetAccount()
-                if (account):
-                    ret["account"] = account
-                await websocket.send(json.dumps(ret, default=str))
+            ret = {"type": "response"}
+            websocket = Item["wsclient"]
+            CmdDefault = json.dumps({"type": "respose", "result": f'Not supported'})
+            try:
+                if 'params' in Item.keys():
+                    ret["result"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)(**Item["params"])
+                else:
+                    ret["result"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)()
+            except AttributeError:
+                pass
+
+            await websocket.send(json.dumps(ret, default=str, ensure_ascii=False))
             counter += 1
             self._cmdQueue.task_done()
 
@@ -275,6 +280,11 @@ class WebsocketsHandler():
         # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"bidask"}}
         ret = {"type": "response", "status": self._callers.SubscribeStocks(**keyword_params)}
         await wsclient.send(json.dumps(ret, default=str))
+
+    async def cmdGetTicks(self,wsclient,**keyword_params):
+        # {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08"}}
+        cmd =  {"cmd":"GetTicks","wsclient":wsclient,"params":{**keyword_params}}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
 
     def checkEmptyMessage(self):
         return (len(self._message) <= 0)

@@ -34,6 +34,8 @@ Shioaji Warp Caller P.O.C project.
             * 指令範例：{"cmd":"GetsubscribEvents"}
         * 取消接收接收Subscribe資料
             * 指令範例：{"cmd":"RemovesubscribEvents"}
+        * 取的ticks歷史資料
+            * 指令範例： {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08"}}
     * 額外功能
         * 推播 Subscribe資料
             * redis
