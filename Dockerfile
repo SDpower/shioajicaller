@@ -1,7 +1,7 @@
 FROM python:3.8-slim
 
 RUN apt update && apt install -y openssl g++ wget bzip2 ca-certificates curl tzdata && \
-    pip install --no-cache-dir uvloop shioaji python-dotenv gmqtt aioredis redis websockets && \
+    pip install --no-cache-dir uvloop shioaji python-dotenv gmqtt aioredis redis ujson websockets && \
     rm -rf /var/lib/{apt,dpkg,cache,log}/ && \
     mkdir -p /src
 

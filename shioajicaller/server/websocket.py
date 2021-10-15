@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import aioredis
-import sys,json
+import sys
 import logging
+import ujson
 import time
 import websockets
 from gmqtt import Client as MQTTClient
@@ -95,7 +96,7 @@ class WebsocketsHandler():
             logging.debug(f'CmdWorker<< {Item["cmd"]}')
             ret = {"type": "response"}
             websocket = Item["wsclient"]
-            CmdDefault = json.dumps({"type": "respose", "result": f'Not supported'})
+            CmdDefault = ujson.dumps({"type": "respose", "result": f'Not supported'})
             try:
                 if 'params' in Item.keys():
                     ret["result"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)(**Item["params"])
@@ -104,7 +105,7 @@ class WebsocketsHandler():
             except AttributeError:
                 pass
 
-            await websocket.send(json.dumps(ret, default=str, ensure_ascii=False))
+            await websocket.send(ujson.dumps(ret, default=str, ensure_ascii=False))
             counter += 1
             self._cmdQueue.task_done()
 
@@ -114,11 +115,11 @@ class WebsocketsHandler():
         while True:
             Item = await self._eventQueue.get()
             ret = {"type":"SystemEvent","ret":Item}
-            strMsg = json.dumps(ret, default=str)
+            strMsg = ujson.dumps(ret, default=str)
             logging.debug(f'EnevtWorker<< {strMsg}')
             websockets.broadcast(ClientS, strMsg)
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = json.dumps(Item, default=str)
+                PstrMsg = ujson.dumps(Item, default=str)
                 if hasattr(self,"_redis"):
                     logging.debug(f'Redis publish >> {PstrMsg}')
                     await self._redis.publish("shioaji.system", PstrMsg)
@@ -136,11 +137,11 @@ class WebsocketsHandler():
             Item = await self._subscribeStocksBidaskQueue.get()
             if len(self._subscribeClientS)>0:
                 ret = {"type":"StocksBidaskEvent","ret":Item}
-                strMsg = json.dumps(ret, default=str)
+                strMsg = ujson.dumps(ret, default=str)
                 websockets.broadcast(self._subscribeClientS, strMsg)
 
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = json.dumps(Item, default=str)
+                PstrMsg = ujson.dumps(Item, default=str)
                 if hasattr(self,"_redis"):
                     logging.debug(f'Redis publish >> {PstrMsg}')
                     await self._redis.publish(f'shioaji.stocks.bidask.{Item["code"]}', PstrMsg)
@@ -159,10 +160,10 @@ class WebsocketsHandler():
             Item = await self._subscribeFuturesBidaskQueue.get()
             if len(self._subscribeClientS)>0:
                 ret = {"type":"FuturesBidaskEvent","ret":Item}
-                strMsg = json.dumps(ret, default=str)
+                strMsg = ujson.dumps(ret, default=str)
                 websockets.broadcast(self._subscribeClientS, strMsg)
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = json.dumps(Item, default=str)
+                PstrMsg = ujson.dumps(Item, default=str)
                 if hasattr(self,"_redis"):
                     logging.debug(f'Redis publish >> {PstrMsg}')
                     await self._redis.publish(f'shioaji.futures.bidask.{Item["code"]}', PstrMsg)
@@ -181,11 +182,11 @@ class WebsocketsHandler():
             Item = await self._subscribeStocksTickQueue.get()
             if len(self._subscribeClientS)>0:
                 ret = {"type":"StocksTickEvent","ret":Item}
-                strMsg = json.dumps(ret, default=str)
+                strMsg = ujson.dumps(ret, default=str)
                 websockets.broadcast(self._subscribeClientS, strMsg)
 
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = json.dumps(Item, default=str)
+                PstrMsg = ujson.dumps(Item, default=str)
                 if hasattr(self,"_redis"):
                     logging.debug(f'Redis publish >> {PstrMsg}')
                     await self._redis.publish(f'shioaji.stocks.tick.{Item["code"]}', PstrMsg)
@@ -204,10 +205,10 @@ class WebsocketsHandler():
             Item = await self._subscribeFuturesTickQueue.get()
             if len(self._subscribeClientS)>0:
                 ret = {"type":"FuturesTickEvent","ret":Item}
-                strMsg = json.dumps(ret, default=str)
+                strMsg = ujson.dumps(ret, default=str)
                 websockets.broadcast(self._subscribeClientS, strMsg)
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = json.dumps(Item, default=str)
+                PstrMsg = ujson.dumps(Item, default=str)
                 if hasattr(self,"_redis"):
                     logging.debug(f'Redis publish >> {PstrMsg}')
                     await self._redis.publish(f'shioaji.futures.tick.{Item["code"]}', PstrMsg)
@@ -226,10 +227,10 @@ class WebsocketsHandler():
             return
         self._data = self.checkFormateMessage(self._message)
         if (self._data == None):
-            await websocket.send(json.dumps({"error": "wrong formate message."}))
+            await websocket.send(ujson.dumps({"error": "wrong formate message."}))
             return
         logging.info("<< "+ self._message)
-        CmdDefault = json.dumps({"type": "respose", "result": f'command not found.'})
+        CmdDefault = ujson.dumps({"type": "respose", "result": f'command not found.'})
         if 'params' not in self._data:
             logging.info(f'cmd{self._data["cmd"]}')
             result = await getattr(self, f'cmd{self._data["cmd"]}', lambda: CmdDefault)(wsclient= websocket)
@@ -244,20 +245,20 @@ class WebsocketsHandler():
         ret = {"type": "response","ret":True}
         ret["id"] = f'{self._websocket.id}'
         self._subscribeClientS.add(wsclient)
-        await wsclient.send(json.dumps(ret, default=str))
+        await wsclient.send(ujson.dumps(ret, default=str))
 
     async def cmdGetsubscribEvents(self,wsclient):
         # {"cmd":"GetsubscribEvents"}
         ret = {"type": "response","ret":True}
         self._subscribeClientS.discard(wsclient)
         self._subscribeClientS.add(wsclient)
-        await wsclient.send(json.dumps(ret, default=str))
+        await wsclient.send(ujson.dumps(ret, default=str))
 
     async def cmdRemovesubscribEvents(self,wsclient):
         # {"cmd":"RemovesubscribEvents"}
         ret = {"type": "response","ret":True}
         self._subscribeClientS.discard(wsclient)
-        await wsclient.send(json.dumps(ret, default=str))
+        await wsclient.send(ujson.dumps(ret, default=str))
 
     async def cmdGetAccount(self,wsclient):
         # {"cmd":"GetAccount"}
@@ -267,19 +268,19 @@ class WebsocketsHandler():
     async def cmdLogout(self,wsclient):
         # {"cmd":"Logout"}
         ret = {"type": "response", "ret": self._callers.LogOut()}
-        await wsclient.send(json.dumps(ret, default=str))
+        await wsclient.send(ujson.dumps(ret, default=str))
 
     async def cmdSubscribeFutures(self,wsclient,**keyword_params):
         # {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"tick"}}
         # {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"bidask"}}
         ret = {"type": "response", "status": self._callers.SubscribeFutures(**keyword_params)}
-        await wsclient.send(json.dumps(ret, default=str))
+        await wsclient.send(ujson.dumps(ret, default=str))
 
     async def cmdSubscribeStocks(self,wsclient,**keyword_params):
         # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"tick"}}
         # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"bidask"}}
         ret = {"type": "response", "status": self._callers.SubscribeStocks(**keyword_params)}
-        await wsclient.send(json.dumps(ret, default=str))
+        await wsclient.send(ujson.dumps(ret, default=str))
 
     async def cmdGetTicks(self,wsclient,**keyword_params):
         # {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08"}}
@@ -291,14 +292,14 @@ class WebsocketsHandler():
 
     def checkFormateMessage(self,message):
         try:
-            return json.loads(message)
+            return ujson.loads(message)
         except:
             pass
         finally:
             pass
 
     def ClientS_event(self):
-        return json.dumps({"type": "total connects", "count": len(ClientS)})
+        return ujson.dumps({"type": "total connects", "count": len(ClientS)})
 
 WebsocketsHandler = WebsocketsHandler()
 
