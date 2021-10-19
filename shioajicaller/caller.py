@@ -164,6 +164,18 @@ class Caller(object):
                 return self._api.ticks(contract=contract, **kwargs)
         return False
 
+    def GetBars(self,StockCode:str="",FutureCode:str="",**kwargs):
+        if (self._check_connect()):
+            if StockCode != None and StockCode !="":
+                contract = self.getContractsStockByCode(StockCode)
+            if FutureCode != None and FutureCode !="":
+                contract = self.getContractsFutures(FutureCode)
+
+            if contract != None:
+                return self._api.kbars(contract=contract, **kwargs)
+        return False
+
+
     ## OTC, TSE
     def getContractsIndexs(self,Exchange:str):
         if (self._check_connect()):

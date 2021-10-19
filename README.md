@@ -24,9 +24,9 @@ Shioaji Warp Caller P.O.C project.
             * 指令範例：{"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"tick"}}
             * 指令範例：{"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"bidask"}}
     * Clinet
-        * 取的client的連線ID
+        * 取得client的連線ID
             * 指令範例：{"cmd":"ID"}
-        * 取的Shioaji 連線帳戶資訊
+        * 取得Shioaji 連線帳戶資訊
             * 指令範例：{"cmd":"GetAccount"}
         * 登出 Shioaji 連線
             * {"cmd":"Logout"}
@@ -34,13 +34,16 @@ Shioaji Warp Caller P.O.C project.
             * 指令範例：{"cmd":"GetsubscribEvents"}
         * 取消接收接收Subscribe資料
             * 指令範例：{"cmd":"RemovesubscribEvents"}
-        * 取的ticks歷史資料
+        * 取得ticks歷史資料
             * 股票指令範例： {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08"}}
             * 期貨指令範例： {"cmd":"GetTicks","params":{"FutureCode":"TXFJ1","date":"2021-10-08"}}
             * 股票區間指令範例： {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08","query_type":"RangeTime","time_start":"09:00:00","time_end":"09:20:01"}}
             * 股票最後指令範例： {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08","query_type":"LastCount","last_cnt":10}}
             * 期貨區間指令範例： {"cmd":"GetTicks","params":{"FutureCode":"TXFJ1","date":"2021-10-08","query_type":"RangeTime","time_start":"09:00:00","time_end":"09:20:01"}}
             * 期貨最後指令範例： {"cmd":"GetTicks","params":{"FutureCode":"TXFJ1","date":"2021-10-08","query_type":"LastCount","last_cnt":10}}
+        * 取得KBar歷史資料
+            * 股票指令範例： {"cmd":"GetKBars","params":{"StockCode":"2330","start":"2021-10-18","end":"2021-10-19"}}
+            * 期貨指令範例： {"cmd":"GetKBars","params":{"FutureCode":"TXFJ1","start":"2021-10-18","end":"2021-10-19"}}
     * 額外功能
         * 推播 Subscribe資料
             * redis

@@ -284,7 +284,15 @@ class WebsocketsHandler():
 
     async def cmdGetTicks(self,wsclient,**keyword_params):
         # {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08"}}
+        # {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08","query_type":"RangeTime","time_start":"09:00:00","time_end":"09:20:01"}}
+        # {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08","query_type":"LastCount","last_cnt":10}}
         cmd =  {"cmd":"GetTicks","wsclient":wsclient,"params":{**keyword_params}}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetKBars(self,wsclient,**keyword_params):
+        # {"cmd":"GetKBars","params":{"StockCode":"2330","start":"2021-10-18","end":"2021-10-19"}}
+        # {"cmd":"GetKBars","params":{"FutureCode":"TXFJ1","start":"2021-10-18","end":"2021-10-19"}}
+        cmd =  {"cmd":"GetBars","wsclient":wsclient,"params":{**keyword_params}}
         loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
 
     def checkEmptyMessage(self):
