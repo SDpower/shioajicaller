@@ -153,7 +153,7 @@ class Caller(object):
             time.sleep(period)
         return False
 
-    def GetTicks(self,date:str,StockCode:str="",FutureCode:str=""):
+    def GetTicks(self,StockCode:str="",FutureCode:str="",**kwargs):
         if (self._check_connect()):
             if StockCode != None and StockCode !="":
                 contract = self.getContractsStockByCode(StockCode)
@@ -161,7 +161,7 @@ class Caller(object):
                 contract = self.getContractsFutures(FutureCode)
 
             if contract != None:
-                return self._api.ticks(contract=contract, date=date)
+                return self._api.ticks(contract=contract, **kwargs)
         return False
 
     ## OTC, TSE

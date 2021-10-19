@@ -35,7 +35,12 @@ Shioaji Warp Caller P.O.C project.
         * 取消接收接收Subscribe資料
             * 指令範例：{"cmd":"RemovesubscribEvents"}
         * 取的ticks歷史資料
-            * 指令範例： {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08"}}
+            * 股票指令範例： {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08"}}
+            * 期貨指令範例： {"cmd":"GetTicks","params":{"FutureCode":"TXFJ1","date":"2021-10-08"}}
+            * 股票區間指令範例： {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08","query_type":"RangeTime","time_start":"09:00:00","time_end":"09:20:01"}}
+            * 股票最後指令範例： {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08","query_type":"LastCount","last_cnt":10}}
+            * 期貨區間指令範例： {"cmd":"GetTicks","params":{"FutureCode":"TXFJ1","date":"2021-10-08","query_type":"RangeTime","time_start":"09:00:00","time_end":"09:20:01"}}
+            * 期貨最後指令範例： {"cmd":"GetTicks","params":{"FutureCode":"TXFJ1","date":"2021-10-08","query_type":"LastCount","last_cnt":10}}
     * 額外功能
         * 推播 Subscribe資料
             * redis
