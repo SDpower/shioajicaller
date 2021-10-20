@@ -44,6 +44,18 @@ Shioaji Warp Caller P.O.C project.
         * 取得KBar歷史資料
             * 股票指令範例： {"cmd":"GetKBars","params":{"StockCode":"2330","start":"2021-10-18","end":"2021-10-19"}}
             * 期貨指令範例： {"cmd":"GetKBars","params":{"FutureCode":"TXFJ1","start":"2021-10-18","end":"2021-10-19"}}
+        * 取得Account & Portfolio(官方表示日後可能移除)
+            * 取得Account
+                * 全部帳戶指令範例： {"cmd":"GetAccountList"}
+                * 股票帳戶指令範例： {"cmd":"GetStockAccount"}
+                * 期貨帳戶指令範例： {"cmd":"GetFutoptAccount"}
+            * 取得期貨帳戶Margin資料
+                * 指令範例： {"cmd":"GetAccountMarginData"}
+            * 取得期貨帳戶Open Position資料
+                * 指令範例： {"cmd":"GetAccountOpenpositionData"}
+            * 取得期貨帳戶SettleProfitLoss資料
+                * 指令範例： {"cmd":"GetAccountSettleProfitlossData"}
+                * 指令範例： {"cmd":"GetAccountSettleProfitlossData","params":{"start_date":"20210801"}}
     * 額外功能
         * 推播 Subscribe資料
             * redis

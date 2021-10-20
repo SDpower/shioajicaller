@@ -265,6 +265,37 @@ class WebsocketsHandler():
         cmd =  {"cmd":"GetAccount","wsclient":wsclient}
         loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
 
+    async def cmdGetStockAccount(self,wsclient):
+        # {"cmd":"GetStockAccount"}
+        cmd =  {"cmd":"GetStockAccount","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetFutoptAccount(self,wsclient):
+        # {"cmd":"GetFutoptAccount"}
+        cmd =  {"cmd":"GetFutoptAccount","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetAccountList(self,wsclient):
+        # {"cmd":"GetAccountList"}
+        cmd =  {"cmd":"GetAccountList","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetAccountMarginData(self,wsclient):
+        # {"cmd":"GetAccountMarginData"}
+        cmd =  {"cmd":"GetAccountMarginData","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetAccountOpenpositionData(self,wsclient):
+        # {"cmd":"GetAccountOpenpositionData"}
+        cmd =  {"cmd":"GetAccountOpenpositionData","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetAccountSettleProfitlossData(self,wsclient,**keyword_params):
+        # {"cmd":"GetAccountSettleProfitlossData"}
+        # {"cmd":"GetAccountSettleProfitlossData","params":{"start_date":"20210801"}}
+        cmd =  {"cmd":"GetAccountSettleProfitlossData","wsclient":wsclient,"params":{**keyword_params}}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
     async def cmdLogout(self,wsclient):
         # {"cmd":"Logout"}
         ret = {"type": "response", "ret": self._callers.LogOut()}

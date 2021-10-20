@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys, logging
-from datetime import datetime
+from datetime import datetime,date,timedelta
 from . import config
 import time
 import shioaji as sj
@@ -46,9 +46,60 @@ class Caller(object):
         if userPassowrd != None and userPassowrd !="":
             self._userPassowrd = userPassowrd
 
+    def GetStockAccount(self):
+        if (self._check_connect()):
+            return self._api.stock_account
+        return False
+    def GetFutoptAccount(self):
+        if (self._check_connect()):
+            return self._api.futopt_account
+        return False
+
+    def GetAccountList(self):
+        if (self._check_connect()):
+            return self._api.list_accounts()
+        return False
+
     def GetAccount(self):
         if (self._check_connect()):
             return self._accounts
+        return False
+
+    # only for futoptand and option !? https://sinotrade.github.io/tutor/accounting/account_portfolio/
+    # On top has:The features of this page will be removed in the future.
+    def GetAccountMargin(self):
+        if (self._check_connect()):
+            return self._api.get_account_margin()
+        return False
+
+    def GetAccountMarginData(self):
+        account_margin = self.GetAccountMargin()
+        if account_margin:
+            return account_margin.data()
+        return False
+
+    def GetAccountOpenposition(self):
+        if (self._check_connect()):
+            return self._api.get_account_openposition()
+        return False
+
+    def GetAccountOpenpositionData(self):
+        account_openposition = self.GetAccountOpenposition()
+        if account_openposition:
+            return account_openposition.data()
+        return False
+
+    def GetAccountSettleProfitloss(self,start_date:str=""):
+        if (self._check_connect()):
+            if start_date == "":
+                start_date = (date.today() - timedelta(days=30)).strftime('%Y%m%d')
+            return self._api.get_account_settle_profitloss(start_date=start_date)
+        return False
+
+    def GetAccountSettleProfitlossData(self,start_date:str=""):
+        account_settle_profitloss = self.GetAccountSettleProfitloss(start_date)
+        if account_settle_profitloss:
+            return account_settle_profitloss.data()
         return False
 
     def Login(self):
@@ -205,4 +256,6 @@ class Caller(object):
                 return self._api.Contracts.Options[Code]
 
     def __del__(self):
+        if self._connected:
+            self._api.logout()
         del self._api
