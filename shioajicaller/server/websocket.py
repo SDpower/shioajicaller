@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import aioredis
-import sys
+import sys, base64
 import logging
 import ujson
 import time
@@ -299,6 +299,25 @@ class WebsocketsHandler():
     async def cmdLogout(self,wsclient):
         # {"cmd":"Logout"}
         ret = {"type": "response", "ret": self._callers.LogOut()}
+        await wsclient.send(ujson.dumps(ret, default=str))
+
+    async def cmdActivateCa(self,wsclient,**keyword_params):
+        # {"cmd":"ActivateCa","params":{"ActivateCa":"BASE64srtring" ,"CaPasswd":"password","PersonId":"PersonId" }}
+        if "ActivateCa" in keyword_params and "CaPasswd" in keyword_params:
+            try:
+                file_content=keyword_params["ActivateCa"].encode("utf-8")
+                with open("SinopacWS.pfx","wb") as file_to_save:
+                    decoded_image_data = base64.decodebytes(file_content)
+                    file_to_save.write(decoded_image_data)
+                    file_to_save.close()
+                    if "PersonId" in keyword_params:
+                        ret = {"type": "response", "ret": self._callers.ActivateCa(Cafiles="SinopacWS.pfx",CaPasswd=keyword_params["CaPasswd"],PersonId=keyword_params["PersonId"])}
+                    else:
+                        ret = {"type": "response", "ret": self._callers.ActivateCa(Cafiles="SinopacWS.pfx",CaPasswd=keyword_params["CaPasswd"])}
+            except Exception as e:
+                ret = {"type": "response", "ret": False,"message":str(e)}
+        else:
+            ret = {"type": "response", "ret": False,"message":"Miss CA string or CaPasswd."}
         await wsclient.send(ujson.dumps(ret, default=str))
 
     async def cmdSubscribeFutures(self,wsclient,**keyword_params):

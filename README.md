@@ -30,6 +30,10 @@ Shioaji Warp Caller P.O.C project.
             * 指令範例：{"cmd":"GetAccount"}
         * 登出 Shioaji 連線
             * {"cmd":"Logout"}
+        * 啟用 Activate CA
+            * PersonId 預設為帳戶ID可以不給。
+            * 指令範例：{"cmd":"ActivateCa","params":{"ActivateCa":"BASE64srtring" ,"CaPasswd":"password"}}
+            * 指令範例：{"cmd":"ActivateCa","params":{"ActivateCa":"BASE64srtring" ,"CaPasswd":"password","PersonId":"PersonId" }}
         * 接收Subscribe資料
             * 指令範例：{"cmd":"GetsubscribEvents"}
         * 取消接收接收Subscribe資料

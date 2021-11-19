@@ -12,6 +12,7 @@ class Caller(object):
         self._userPassowrd = config.userPassowrd
         self._connected = False
         self._api = sj.Shioaji()
+        self._caStatus = False
         logging.info("shioaji version:"+sj.__version__)
         print("shioaji version:"+sj.__version__)
         self._api.quote.set_event_callback(self._event_callback)
@@ -115,6 +116,20 @@ class Caller(object):
         self._api.Contracts = None
         logging.info(f"LogOut.")
         return ret
+
+    def ActivateCa(self,Cafiles:str="Sinopac.pfx",PersonId:str="",CaPasswd:str=""):
+        if PersonId =="":
+            PersonId = self._userID
+        if (self._check_connect()):
+            result = self._api.activate_ca(
+                ca_path=Cafiles,
+                ca_passwd=CaPasswd,
+                person_id=PersonId,
+            )
+            self._caStatus = result
+            return result
+        else:
+            return False
 
     def ContractsDone(self):
         logging.info(f"Loading Contracts is Done.")
