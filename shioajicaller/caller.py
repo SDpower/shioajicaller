@@ -20,6 +20,23 @@ class Caller(object):
         self._api.quote.set_on_bidask_stk_v1_callback(self.Quote_callback_stk_v1_bidask)
         self._api.quote.set_on_tick_fop_v1_callback(self.Quote_callback_fop_v1_tick)
         self._api.quote.set_on_bidask_fop_v1_callback(self.Quote_callback_fop_v1_bidask)
+        self._api.set_order_callback(self.Order_CallBack)
+
+    def Order_CallBack(self,stat, msg):
+        if hasattr(self, 'OrderCB'):
+            self.OrderCB(stat, msg)
+
+    def Trade_CallBack(self,keyword_params):
+        if hasattr(self, 'TradeCB'):
+            self.TradeCB(**keyword_params)
+
+    def SetOrderCallBack(self,callback):
+        if callable(callback):
+            self.OrderCB=callback
+
+    def SetTradeCallBack(self,callback):
+        if callable(callback):
+            self.TradeCB=callback
 
     def SetEnevtCallBack(self,callback):
         if callable(callback):
@@ -158,6 +175,131 @@ class Caller(object):
                 return True
             else:
                 return False
+        else:
+            return False
+
+    def UpdateOrderById(self,order_id:str="",price:float=0.0,qty:int=0):
+        if self._check_connect():
+            self._api.update_status()
+            tradeList = self._api.list_trades()
+            if len(tradeList) == 0:
+                return False
+            else:
+                for trade in tradeList:
+                    if trade.order.id == order_id:
+                        if price > 0.0 and qty > 0:
+                            return dict(**self._api.update_order(trade=trade, price=price, qty=qty))
+                        elif price > 0.0:
+                            return dict(**self._api.update_order(trade=trade, price=price))
+                        elif qty > 0:
+                            return dict(**self._api.update_order(trade=trade, qty=qty))
+                        else:
+                            return False
+                return False
+        else:
+            return False
+
+    def CancelOrderById(self,order_id:str=""):
+        if self._check_connect():
+            self._api.update_status()
+            tradeList = self._api.list_trades()
+            if len(tradeList) == 0:
+                return False
+            else:
+                for trade in tradeList:
+                    if trade.order.id == order_id:
+                        return dict(**self._api.cancel_order(trade))
+                return False
+        else:
+            return False
+
+    def GetOrderById(self,order_id:str=""):
+        if self._check_connect():
+            self._api.update_status()
+            tradeList = self._api.list_trades()
+            if len(tradeList) == 0:
+                return False
+            else:
+                for trade in tradeList:
+                    if trade.order.id == order_id:
+                        return dict(**trade)
+                return False
+        else:
+            return False
+
+    def GetOrderList(self):
+        if self._check_connect():
+            self._api.update_status()
+            tradeList = self._api.list_trades()
+            if len(tradeList) == 0:
+                return tradeList
+            else:
+                ret=[]
+                for trade in tradeList:
+                    ret.append(dict(**trade))
+                return ret
+        else:
+            return False
+
+    def OrderStocks(self,code:str="",price:float=0.0,quantity:int=0,action:str="",price_type:str="",order_type:str="",order_cond:str="",order_lot:str="Common",first_sell:str="false"):
+        """
+        Code: Stocks code.
+        price: 10.0
+        quantity: 1
+        action: {Buy, Sell} (買、賣)
+        price_type: {LMT, MKT, MKP} (限價、市價、範圍市價)
+        order_type: {ROD, IOC, FOK} (當日有效、立即成交否則取消、全部成交否則取消)
+        order_cond: {Cash, MarginTrading, ShortSelling} (現股、融資、融券)
+        order_lot: {Common, Fixing, Odd, IntradayOdd} (整股、定盤、盤後零股、盤中零股)
+        first_sell {str}: {true, false}
+        """
+        if (self._check_connect() and price > 0 ):
+            if not self._caStatus:
+                return False
+            if (code == None or code ==""):
+                return False
+
+            contract = self._api.Contracts.Stocks[code]
+            order = self._api.Order(
+                action=action,
+                price=price,
+                quantity=quantity,
+                price_type=price_type,
+                order_type=order_type,
+                order_cond=order_cond,
+                order_lot=order_lot,
+                first_sell=first_sell,
+                account=self._api.stock_account)
+            return dict(**self._api.place_order(contract, order, timeout=0,cb=self.Trade_CallBack))
+        else:
+            return False
+
+    def OrderFutures(self,code:str="",price:float=0.0,quantity:int=0,action:str="",price_type:str="",order_type:str="",octype:str=""):
+        """
+        Code: Futures code.
+        price: 100.0
+        quantity: 1
+        action: {Buy, Sell} (買、賣)
+        price_type: {LMT, MKT, MKP} (限價、市價、範圍市價)
+        order_type: {ROD, IOC, FOK} (當日有效、立即成交否則取消、全部成交否則取消)
+        octype: {Auto, NewPosition, Cover, DayTrade} (自動、新倉、平倉、當沖)
+        """
+        if (self._check_connect() and price > 0 ):
+            if not self._caStatus:
+                return False
+            if (code == None or code ==""):
+                return False
+
+            contract = self._api.Contracts.Futures[code]
+            order = self._api.Order(
+                action=action,
+                price=price,
+                quantity=quantity,
+                price_type=price_type,
+                order_type=order_type,
+                octype=octype,
+                account=self._api.futopt_account)
+            return dict(**self._api.place_order(contract, order, timeout=0,cb=self.Trade_CallBack))
         else:
             return False
 

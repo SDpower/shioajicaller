@@ -60,6 +60,33 @@ Shioaji Warp Caller P.O.C project.
             * 取得期貨帳戶SettleProfitLoss資料
                 * 指令範例： {"cmd":"GetAccountSettleProfitlossData"}
                 * 指令範例： {"cmd":"GetAccountSettleProfitlossData","params":{"start_date":"20210801"}}
+        * 下單Order
+            * 套用憑證Apply & Activate CA
+                * 請用base64 讀取你的憑證。
+                * PersonId 可以不給預設為登入帳戶的ID
+                * 指令範例： {"cmd":"ActivateCa","params":{"ActivateCa":"BASE64srtring" ,"CaPasswd":"password","PersonId":"PersonId" }}
+            * 股票下單 Stock
+                * price 請給小數點
+                * 買指令範例： {"cmd":"OrderStocks","params":{"code":"2610","price":25.0,"quantity":1,"action":"Buy","price_type":"LMT","order_cond":"Cash","order_type":"ROD","order_lot":"Common"}}
+                * first_sell指令範例： {"cmd":"OrderStocks","params":{"code":"2610","price":25.0,"quantity":1,"action":"Sell","price_type":"LMT","order_cond":"Cash","order_type":"ROD","order_lot":"Common","first_sell":"true"}}
+            * 期貨下單 Future
+                * price 請給小數點
+                * 指令範例： {"cmd":"OrderFutures","params":{"code":"MXFL1","price":17767.0,"quantity":1,"action":"Buy","price_type":"LMT","order_type":"ROD","octype":"Auto"}}
+                * DayTrade 指令範例： {"cmd":"OrderFutures","params":{"code":"MXFL1","price":17767.0,"quantity":1,"action":"Buy","price_type":"LMT","order_type":"ROD","octype":"DayTrade"}}
+            * 取的交易清單list_trades
+                * 指令範例：{"cmd":"GetOrderList"}
+            * 取的單筆交易GetOrderById
+                * 參數id為oder的id
+                * 指令範例：{"cmd":"GetOrderById","params":{"id":"d12b7777"}}
+            * 取消單筆交易CancelOrderById
+                * 參數id為oder的id
+                * 指令範例：{"cmd":"CancelOrderById","params":{"id":"d12b7777"}}
+            * 更新單筆交易UpdateOrderById
+                * 參數id為oder的id
+                * price 請給小數點
+                * 指令範例：{"cmd":"UpdateOrderById","params":{"id":"d12b7777","price":17880.0,"qty":1}}
+                * 指令範例：{"cmd":"UpdateOrderById","params":{"id":"d12b7777","price":17880.0}}
+                * 指令範例：{"cmd":"UpdateOrderById","params":{"id":"d12b7777","qty":1}}
     * 額外功能
         * 推播 Subscribe資料
             * redis
@@ -74,6 +101,8 @@ Shioaji Warp Caller P.O.C project.
             * {"type": "FuturesBidaskEvent"........
         * Shioaji系統回傳
             * {"type":"SystemEvent"..........
+            * {"type":"OrderEvent"..........
+            * {"type":"TradeEvent"..........
 
 ## 範例Example
 這裡說明範例，參數避免暴露請自行建立.env檔案就可以不用給帳號密碼參數。
@@ -122,6 +151,39 @@ The most commonly used git commands are:
    update         update Code List
    websockets     start a websocket server
 shioajicaller: error: the following arguments are required: command
+
+# shioajicaller websockets --h
+shioaji version:0.3.3.dev4
+usage: main.py [-h] [-u USER_ID [USER_ID ...]] [-p USER_PASSWORD [USER_PASSWORD ...]] [-wp WEBSOCKETS_PORT] [-ps POOL_SIZE] [-wr] [-rh REDIS_HOST] [-rp REDIS_PORT]
+               [-rdb REDIS_DB] [-wm] [-mh MQTT_HOST] [-mu MQTT_USER] [-mp MQTT_PASSWORD] [-v]
+
+Websockets Server
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -u USER_ID [USER_ID ...], --user-id USER_ID [USER_ID ...]
+                        Shioaji USER ID
+  -p USER_PASSWORD [USER_PASSWORD ...], --user-password USER_PASSWORD [USER_PASSWORD ...]
+                        Shioaji USER PASSWORD
+  -wp WEBSOCKETS_PORT, --websockets-port WEBSOCKETS_PORT
+                        Websockets port
+  -ps POOL_SIZE, --pool-size POOL_SIZE
+                        pool size
+  -wr, --with-redis     with redis publish.
+  -rh REDIS_HOST, --redis-host REDIS_HOST
+                        redis host
+  -rp REDIS_PORT, --redis-port REDIS_PORT
+                        redis port
+  -rdb REDIS_DB, --redis-db REDIS_DB
+                        reis db
+  -wm, --with-mqtt      with mqtt publish.
+  -mh MQTT_HOST, --mqtt-host MQTT_HOST
+                        mqtt host
+  -mu MQTT_USER, --mqtt-user MQTT_USER
+                        mqtt user
+  -mp MQTT_PASSWORD, --mqtt-password MQTT_PASSWORD
+                        mqtt password
+  -v, --verbosity       increase output verbosity
 ```
 
 啟動服務:

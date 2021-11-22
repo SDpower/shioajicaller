@@ -23,6 +23,8 @@ class WebsocketsHandler():
         self._callers = callers
         self._cmdQueue = asyncio.Queue()
         self._eventQueue = asyncio.Queue()
+        self._oderQueue = asyncio.Queue()
+        self._tradeQueue = asyncio.Queue()
         self._subscribeStocksTickQueue = asyncio.Queue()
         self._subscribeFuturesTickQueue = asyncio.Queue()
         self._subscribeStocksBidaskQueue = asyncio.Queue()
@@ -34,6 +36,8 @@ class WebsocketsHandler():
         self._callers.SetSubscribeFuturesTickCallBack(self.SubscribeFuturesTickCallBack)
         self._callers.SetSubscribeStocksBidaskCallBack(self.SubscribeStocksBidaskCallBack)
         self._callers.SetSubscribeFuturesBidaskCallBack(self.SubscribeFuturesBidaskCallBack)
+        self._callers.SetTradeCallBack(self.TradeCallBack)
+        self._callers.SetOrderCallBack(self.OrderCallBack)
 
     def _on_connect(self, client, flags, rc, properties):
         logging.info('Mqtt Connected')
@@ -73,6 +77,12 @@ class WebsocketsHandler():
         )
         logging.info(f"SetRedisConnections! {redisHost}:{redisPort}:{redisDb}")
 
+    def OrderCallBack(self,*args):
+        loop.call_soon_threadsafe(self._oderQueue.put_nowait, args)
+
+    def TradeCallBack(self,**keyword_params):
+        loop.call_soon_threadsafe(self._tradeQueue.put_nowait, keyword_params)
+
     def EnevtCallBack(self,item):
         loop.call_soon_threadsafe(self._eventQueue.put_nowait, item)
 
@@ -108,6 +118,48 @@ class WebsocketsHandler():
             await websocket.send(ujson.dumps(ret, default=str, ensure_ascii=False))
             counter += 1
             self._cmdQueue.task_done()
+
+    async def OrderWorker(self,name):
+        counter = 0
+        logging.info(f'{name} start!')
+        while True:
+            Item = await self._oderQueue.get()
+            ret = {"type":"OderEvent","ret":Item}
+            strMsg = ujson.dumps(ret, default=str)
+            logging.debug(f'OderEvent<< {strMsg}')
+            websockets.broadcast(ClientS, strMsg)
+            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                PstrMsg = ujson.dumps(Item, default=str)
+                if hasattr(self,"_redis"):
+                    logging.debug(f'Redis publish >> {PstrMsg}')
+                    await self._redis.publish("shioaji.order", PstrMsg)
+                if hasattr(self,"_mqttClient"):
+                    logging.debug(f'Mqtt publish >> {PstrMsg}')
+                    mqtttopic = f'Shioaji/v1/order'
+                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+            counter += 1
+            self._oderQueue.task_done()
+
+    async def TradeWorker(self,name):
+        counter = 0
+        logging.info(f'{name} start!')
+        while True:
+            Item = await self._tradeQueue.get()
+            ret = {"type":"TradeEvent","ret":Item}
+            strMsg = ujson.dumps(ret, default=str)
+            logging.debug(f'TradeEvent<< {strMsg}')
+            websockets.broadcast(ClientS, strMsg)
+            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                PstrMsg = ujson.dumps(Item, default=str)
+                if hasattr(self,"_redis"):
+                    logging.debug(f'Redis publish >> {PstrMsg}')
+                    await self._redis.publish("shioaji.trade", PstrMsg)
+                if hasattr(self,"_mqttClient"):
+                    logging.debug(f'Mqtt publish >> {PstrMsg}')
+                    mqtttopic = f'Shioaji/v1/trade'
+                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+            counter += 1
+            self._tradeQueue.task_done()
 
     async def EnevtWorker(self,name):
         counter = 0
@@ -301,6 +353,50 @@ class WebsocketsHandler():
         ret = {"type": "response", "ret": self._callers.LogOut()}
         await wsclient.send(ujson.dumps(ret, default=str))
 
+    async def cmdGetOrderList(self,wsclient):
+        # {"cmd":"GetOrderList"}
+        cmd =  {"cmd":"GetOrderList","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdUpdateOrderById(self,wsclient,**keyword_params):
+        # {"cmd":"UpdateOrderById","params":{"id":"d12b7777","price":17880.0}}
+        if "id" not in keyword_params:
+            ret = {"type": "response", "ret": False}
+            await wsclient.send(ujson.dumps(ret, default=str))
+        else:
+            keyword_params["order_id"] = keyword_params["id"]
+            del keyword_params["id"]
+            cmd =  {"cmd":"UpdateOrderById","wsclient":wsclient,"params":{**keyword_params}}
+            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdCancelOrderById(self,wsclient,**keyword_params):
+        # {"cmd":"CancelOrderById","params":{"id":"d12b7777"}}
+        if "id" not in keyword_params:
+            ret = {"type": "response", "ret": False}
+            await wsclient.send(ujson.dumps(ret, default=str))
+        else:
+            cmd =  {"cmd":"CancelOrderById","wsclient":wsclient,"params":{"order_id":keyword_params["id"]}}
+            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetOrderById(self,wsclient,**keyword_params):
+        # {"cmd":"GetOrderById","params":{"id":"d12b7777"}}
+        if "id" not in keyword_params:
+            ret = {"type": "response", "ret": False}
+            await wsclient.send(ujson.dumps(ret, default=str))
+        else:
+            cmd =  {"cmd":"GetOrderById","wsclient":wsclient,"params":{"order_id":keyword_params["id"]}}
+            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdOrderStocks(self,wsclient,**keyword_params):
+        # {"cmd":"OrderStocks","params":{"code":"2610","price":25.0,"quantity":1,"action":"Buy","price_type":"LMT","order_cond":"Cash","order_type":"ROD","order_lot":"Common"}}
+        cmd =  {"cmd":"OrderStocks","wsclient":wsclient,"params":{**keyword_params}}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdOrderFutures(self,wsclient,**keyword_params):
+        # {"cmd":"OrderFutures","params":{"code":"MXFL1","price":17767.0,"quantity":1,"action":"Buy","price_type":"LMT","order_type":"ROD","octype":"Auto"}}
+        cmd =  {"cmd":"OrderFutures","wsclient":wsclient,"params":{**keyword_params}}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
     async def cmdActivateCa(self,wsclient,**keyword_params):
         # {"cmd":"ActivateCa","params":{"ActivateCa":"BASE64srtring" ,"CaPasswd":"password","PersonId":"PersonId" }}
         if "ActivateCa" in keyword_params and "CaPasswd" in keyword_params:
@@ -401,6 +497,8 @@ def __start_wss_server(port:int=6789,callers:Caller=Caller(),pool_size:int=50,de
         if with_mqtt:
             loop.create_task(WebsocketsHandler.SetMqttConnection(mqttHost,mqttUser,mqttPassword))
         loop.create_task(WebsocketsHandler.EnevtWorker('EnevtWorker-1'))
+        loop.create_task(WebsocketsHandler.OrderWorker('OrderWorker-1'))
+        loop.create_task(WebsocketsHandler.TradeWorker('TradeWorker-1'))
         loop.create_task(WebsocketsHandler.CmdWorker('CmdWorker-1'))
 
         for i in range(pool_size):
