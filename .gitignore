@@ -64,6 +64,8 @@ ENV/
 # mypy
 .mypy_cache/
 
+logs/
 *.dat
 *.csv
 *.log
+*.pfx

@@ -30,10 +30,6 @@ Shioaji Warp Caller P.O.C project.
             * 指令範例：{"cmd":"GetAccount"}
         * 登出 Shioaji 連線
             * {"cmd":"Logout"}
-        * 啟用 Activate CA
-            * PersonId 預設為帳戶ID可以不給。
-            * 指令範例：{"cmd":"ActivateCa","params":{"ActivateCa":"BASE64srtring" ,"CaPasswd":"password"}}
-            * 指令範例：{"cmd":"ActivateCa","params":{"ActivateCa":"BASE64srtring" ,"CaPasswd":"password","PersonId":"PersonId" }}
         * 接收Subscribe資料
             * 指令範例：{"cmd":"GetsubscribEvents"}
         * 取消接收接收Subscribe資料
@@ -64,6 +60,7 @@ Shioaji Warp Caller P.O.C project.
             * 套用憑證Apply & Activate CA
                 * 請用base64 讀取你的憑證。
                 * PersonId 可以不給預設為登入帳戶的ID
+                * 指令範例： {"cmd":"ActivateCa","params":{"ActivateCa":"BASE64srtring" ,"CaPasswd":"password"}}
                 * 指令範例： {"cmd":"ActivateCa","params":{"ActivateCa":"BASE64srtring" ,"CaPasswd":"password","PersonId":"PersonId" }}
             * 股票下單 Stock
                 * price 請給小數點
@@ -196,6 +193,7 @@ Start Websockets Server Port:6789
 ### Client 範例
 
 下方可以看到個指令接收狀況與系統回傳
+#### 資料訂閱 範例
 ```
 # python -m websockets ws://127.0.0.1:6789/
 Connected to ws://127.0.0.1:6789/.
@@ -235,6 +233,22 @@ Connected to ws://127.0.0.1:6789/.
 < {"type": "response", "ret": true}
 ```
 
+#### 下單範例
+```
+# python -m websockets ws://127.0.0.1:6789/
+Connected to ws://127.0.0.1:6789/.
+< {"type": "total connects", "count": 1}
+> {"cmd":"GetAccount"}
+< {"type": "response", "account": ["person_id='XXXXXX' broker_id='XXXXXX' account_id='XXXXXXX' signed=True username='XXXXXXXXX'", "person_i
+< {"type": "SystemEvent", "ret": {"ResponseCode": 0, "Code": 0, "Message": "host '203.66.91.161:80', IP 203.66.91.161:80 (host 1 of 1) (host connection attempt 1 of 1) (total connection attempt 1 of 1)", "Description": "Session up"}}'"]}
+> {"cmd":"ActivateCa","params":{"PersonId":"XXXXXXX","CaPasswd":"XXXXXXX","ActivateCa":"......."}}
+< {"type":"response","result":true}
+> {"cmd":"OrderFutures","params":{"code":"MXFL1","price":17880.0,"quantity":1,"action":"Sell","price_type":"LMT","order_type":"IOC","octype":"DayTrade"}}
+< {"type":"response","result":true}
+< {"type":"TradeEvent","ret":{"contract":{"code":"MXFL1","symbol":"MXF202112","name":"AAAAAAAA","category":"MXF","delivery_month":"202112","delivery_date":"2021\/12\/15","underlying_kind":"I","unit":1,"limit_up":19637.0,"limit_down":16067.0,"reference":17852.0,"update_date":"2021\/11\/22"},"status":{"id":"5e1943de","status":"PendingSubmit","status_code":"    ","order_datetime":"2021-11-22 11:04:19","deals":[]},"order":{"action":"Sell","price":17880.0,"quantity":1,"id":"5e1943de","seqno":"762613","account":{"account_type":"F","person_id":"XXXXXXX","broker_id":"XXXXXXX","account_id":"XXXXXXX","signed":true},"ca":"........","price_type":"LMT","order_type":"IOC","octype":"DayTrade"}}}
+< {"type":"OderEvent","ret":["FORDER",{"operation":{"op_type":"New","op_code":"00","op_msg":""},"order":{"id":"5e1943de","seqno":"762613","ordno":"t00Gw","account":{"account_type":"F","person_id":"","broker_id":"XXXXXXX","account_id":"3918061","signed":true},"action":"Sell","price":17880.0,"quantity":1,"order_type":"IOC","market_type":"Day","oc_type":"DayTrade","subaccount":""},"status":{"id":"5e1943de","exchange_ts":1637550559,"modified_price":0.0,"cancel_quantity":0,"order_quantity":1},"contract":{"security_type":"FUT","code":"MXF","exchange":"TIM","delivery_month":"XXXXXXX","delivery_date":"","strike_price":0.0,"option_right":"Future"}}]}
+< {"type":"OderEvent","ret":["FORDER",{"operation":{"op_type":"Cancel","op_code":"00","op_msg":""},"order":{"id":"5e1943de","seqno":"762613","ordno":"t00Gw","account":{"account_type":"F","person_id":"","broker_id":"XXXXXXX","account_id":"3918061","signed":true},"action":"Sell","price":17880.0,"quantity":1,"order_type":"IOC","market_type":"Day","oc_type":"DayTrade","subaccount":""},"status":{"id":"5e1943de","exchange_ts":1637550559,"modified_price":0.0,"cancel_quantity":1,"order_quantity":1},"contract":{"security_type":"FUT","code":"MXF","exchange":"TIM","delivery_month":"XXXXXXX","delivery_date":"","strike_price":0.0,"option_right":"Future"}}]}
+```
 ### 安全事項免責聲明
 
 1. 目前系統設計皆未使用加密連線，請自行做好安全控管。
