@@ -101,6 +101,27 @@ Shioaji Warp Caller P.O.C project.
             * {"type":"OrderEvent"..........
             * {"type":"TradeEvent"..........
 
+## 安裝使用
+  **目前已知Windows，不支援套件uvloop請用Docker方式執行。**
+### 使用pip安裝
+ 目前已知Windows 不支援套件uvloop。
+```
+$ pip install shioajicaller
+$ shioajicaller -h
+```
+
+### 使用Docker
+Docker [https://hub.docker.com/r/sdpower/shioaji_caller](https://hub.docker.com/r/sdpower/shioaji_caller)
+範例：
+```
+docker run -d \
+  --name shioaji-caller \
+  --restart unless-stopped \
+  --env-file=".env" \
+  -p 6789:6789 \
+  sdpower/shioaji_caller main.py websockets -wm -ps 250
+```
+
 ## 範例Example
 這裡說明範例，參數避免暴露請自行建立.env檔案就可以不用給帳號密碼參數。
 
