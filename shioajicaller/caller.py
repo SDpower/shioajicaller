@@ -247,7 +247,7 @@ class Caller(object):
         price: 10.0
         quantity: 1
         action: {Buy, Sell} (買、賣)
-        price_type: {LMT, MKT, MKP} (限價、市價、範圍市價)
+        price_type: {LMT, MKT} (限價、市價)
         order_type: {ROD, IOC, FOK} (當日有效、立即成交否則取消、全部成交否則取消)
         order_cond: {Cash, MarginTrading, ShortSelling} (現股、融資、融券)
         order_lot: {Common, Fixing, Odd, IntradayOdd} (整股、定盤、盤後零股、盤中零股)
