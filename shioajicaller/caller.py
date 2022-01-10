@@ -253,10 +253,12 @@ class Caller(object):
         order_lot: {Common, Fixing, Odd, IntradayOdd} (整股、定盤、盤後零股、盤中零股)
         first_sell {str}: {true, false}
         """
-        if (self._check_connect() and price > 0 ):
+        if self._check_connect():
             if not self._caStatus:
                 return False
             if (code == None or code ==""):
+                return False
+            if (price_type == "LMT" and price <= 0 ):
                 return False
 
             contract = self._api.Contracts.Stocks[code]
@@ -284,10 +286,12 @@ class Caller(object):
         order_type: {ROD, IOC, FOK} (當日有效、立即成交否則取消、全部成交否則取消)
         octype: {Auto, NewPosition, Cover, DayTrade} (自動、新倉、平倉、當沖)
         """
-        if (self._check_connect() and price > 0 ):
+        if self._check_connect():
             if not self._caStatus:
                 return False
             if (code == None or code ==""):
+                return False
+            if (price_type == "LMT" and price <= 0 ):
                 return False
 
             contract = self._api.Contracts.Futures[code]
