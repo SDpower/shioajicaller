@@ -465,6 +465,8 @@ async def root(websocket, path):
         # Manage state changes
         async for message in websocket:
             await WebsocketsHandler.run(websocket,message)
+    except Exception as e:
+        logging.info(f'ws client error: %s', e)
     finally:
         # Unregister user
         ClientS.remove(websocket)
