@@ -512,11 +512,10 @@ def __start_wss_server(port:int=6789,callers:Caller=Caller(),pool_size:int=50,de
         task = asyncio.ensure_future(start_server(port))
         loop.run_until_complete(task)
     except KeyboardInterrupt:
-        if task:
-            print('Interrupted, cancelling tasks')
-            task.cancel()
-            loop.run_forever()
-            task.exception()
+        print('Interrupted, cancelling tasks')
+        task.cancel()
+        loop.run_forever()
+        task.exception()
     finally:
         loop.close()
 
