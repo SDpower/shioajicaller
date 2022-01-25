@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import aioredis
-import sys, base64
+import os, sys, base64
 import logging
 import ujson
 import time
@@ -410,6 +410,7 @@ class WebsocketsHandler():
                         ret = {"type": "response", "ret": self._callers.ActivateCa(Cafiles="SinopacWS.pfx",CaPasswd=keyword_params["CaPasswd"],PersonId=keyword_params["PersonId"])}
                     else:
                         ret = {"type": "response", "ret": self._callers.ActivateCa(Cafiles="SinopacWS.pfx",CaPasswd=keyword_params["CaPasswd"])}
+                    os.remove("SinopacWS.pfx")
             except Exception as e:
                 ret = {"type": "response", "ret": False,"message":str(e)}
         else:
