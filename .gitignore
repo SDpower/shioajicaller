@@ -55,6 +55,7 @@ target/
 .python-version
 
 # Environments
+.env.*
 .env
 .venv
 env/
