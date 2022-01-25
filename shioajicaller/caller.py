@@ -151,6 +151,20 @@ class Caller(object):
     def ContractsDone(self):
         logging.info(f"Loading Contracts is Done.")
 
+    def Contracts(self,type:str="",code:str=""):
+        if (code == None or code ==""):
+            return False
+        if (type == None or type ==""):
+            return False
+        if (self._check_connect()):
+            contract = self._api.Contracts[type][code]
+            if contract != None:
+                return contract
+            else:
+                return False
+        else:
+            return False
+
     def SubscribeStocks(self,code:str="",quote_type:str="tick",intraday_odd:bool=False,version:str="v1"):
         if (code == None or code ==""):
             return False

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import aioredis
-import sys, base64
+import os, sys, base64
 import logging
 import ujson
 import time
@@ -410,11 +410,20 @@ class WebsocketsHandler():
                         ret = {"type": "response", "ret": self._callers.ActivateCa(Cafiles="SinopacWS.pfx",CaPasswd=keyword_params["CaPasswd"],PersonId=keyword_params["PersonId"])}
                     else:
                         ret = {"type": "response", "ret": self._callers.ActivateCa(Cafiles="SinopacWS.pfx",CaPasswd=keyword_params["CaPasswd"])}
+                    os.remove("SinopacWS.pfx")
             except Exception as e:
                 ret = {"type": "response", "ret": False,"message":str(e)}
         else:
             ret = {"type": "response", "ret": False,"message":"Miss CA string or CaPasswd."}
         await wsclient.send(ujson.dumps(ret, default=str))
+
+    async def cmdGetContracts(self,wsclient,**keyword_params):
+        # {"cmd":"GetContracts","params":{"type":"Stocks","code":"2330"}}
+        # {"cmd":"GetContracts","params":{"type":"Futures","code":"TXFB2"}}
+        # {"cmd":"GetContracts","params":{"type":"Options","code":"TXO17500C2"}}
+        # {"cmd":"GetContracts","params":{"type":"Indexs","code":"001"}}
+        ret = {"type": "response", "status": self._callers.Contracts(**keyword_params)}
+        await wsclient.send(ujson.dumps(ret,default=lambda obj: obj.__dict__))
 
     async def cmdSubscribeFutures(self,wsclient,**keyword_params):
         # {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"tick"}}
