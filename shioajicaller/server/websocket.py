@@ -417,6 +417,14 @@ class WebsocketsHandler():
             ret = {"type": "response", "ret": False,"message":"Miss CA string or CaPasswd."}
         await wsclient.send(ujson.dumps(ret, default=str))
 
+    async def cmdGetContracts(self,wsclient,**keyword_params):
+        # {"cmd":"GetContracts","params":{"type":"Stocks","code":"2330"}}
+        # {"cmd":"GetContracts","params":{"type":"Futures","code":"TXFB2"}}
+        # {"cmd":"GetContracts","params":{"type":"Options","code":"TXO17500C2"}}
+        # {"cmd":"GetContracts","params":{"type":"Indexs","code":"001"}}
+        ret = {"type": "response", "status": self._callers.Contracts(**keyword_params)}
+        await wsclient.send(ujson.dumps(ret,default=lambda obj: obj.__dict__))
+
     async def cmdSubscribeFutures(self,wsclient,**keyword_params):
         # {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"tick"}}
         # {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"bidask"}}

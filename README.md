@@ -16,6 +16,15 @@ Shioaji Warp Caller P.O.C project.
     * 每日更新即可不用每次都要去查詢API，最好方式開盤前先執行跑一次。
     * 輸出為csv 檔案 很方便，使用編碼為UTF8請注意。
 * Websocket服務
+    * 取的Contract資料
+        * 股票 Stocks
+            * 指令範例：{"cmd":"GetContracts","params":{"type":"Stocks","code":"2330"}}
+        * 期貨 Futures
+            * 指令範例：{"cmd":"GetContracts","params":{"type":"Futures","code":"TXFB2"}}
+        * 選擇權 Options
+            * 指令範例：{"cmd":"GetContracts","params":{"type":"Options","code":"TXO17500C2"}}
+        * 指數 Indexs
+            * 指令範例：{"cmd":"GetContracts","params":{"type":"Indexs","code":"001"}}
     * 訂閱Subscribe或取消
         * 股票
             * 指令範例：{"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"tick"}}
