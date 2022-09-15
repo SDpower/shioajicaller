@@ -430,6 +430,10 @@ class Caller(object):
             else:
                 return self._api.Contracts.Options[Code]
 
+    def GetScanners(self,**kwargs):        
+        if (self._check_connect()):
+            return self._api.scanners(**kwargs)
+
     def __del__(self):
         if self._connected:
             self._api.logout()

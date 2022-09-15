@@ -53,6 +53,12 @@ Shioaji Warp Caller P.O.C project.
         * 取得KBar歷史資料
             * 股票指令範例： {"cmd":"GetKBars","params":{"StockCode":"2330","start":"2021-10-18","end":"2021-10-19"}}
             * 期貨指令範例： {"cmd":"GetKBars","params":{"FutureCode":"TXFJ1","start":"2021-10-18","end":"2021-10-19"}}
+        * 取得Scanners資料
+            * 指令範例： {"cmd":"GetScanners","params":{"scanner_type":"ChangePercentRank"}}
+            * 指令範例： {"cmd":"GetScanners","params":{"scanner_type":"ChangePriceRank"}}
+            * 指令範例： {"cmd":"GetScanners","params":{"scanner_type":"DayRangeRank"}}
+            * 指令範例： {"cmd":"GetScanners","params":{"scanner_type":"VolumeRank"}}
+            * 指令範例： {"cmd":"GetScanners","params":{"scanner_type":"AmountRank"}}
         * 取得Account & Portfolio(官方表示日後可能移除)
             * 取得Account
                 * 全部帳戶指令範例： {"cmd":"GetAccountList"}
@@ -172,7 +178,7 @@ MQTT_PASSWORD=password
 命令範例:
 ```
 # shioajicaller
-shioaji version:0.3.3.dev3
+shioaji version:0.3.6.dev3
 usage: <command> [<args>]
 The most commonly used git commands are:
    update         update Code List
@@ -216,7 +222,7 @@ optional arguments:
 啟動服務:
 ```
 # shioajicaller websockets
-shioaji version:0.3.3.dev3
+shioaji version:0.3.6.dev3
 Start Websockets Server Port:6789
 ```
 

@@ -431,6 +431,15 @@ class WebsocketsHandler():
         ret = {"type": "response", "status": self._callers.SubscribeFutures(**keyword_params)}
         await wsclient.send(ujson.dumps(ret, default=str))
 
+    async def cmdGetScanners(slef,wsclient,**keyword_params):
+        # {"cmd":"GetScanners","params":{"scanner_type":"ChangePercentRank"}}
+        # {"cmd":"GetScanners","params":{"scanner_type":"ChangePriceRank"}}
+        # {"cmd":"GetScanners","params":{"scanner_type":"DayRangeRank"}}
+        # {"cmd":"GetScanners","params":{"scanner_type":"VolumeRank"}}
+        # {"cmd":"GetScanners","params":{"scanner_type":"AmountRank"}}
+        cmd =  {"cmd":"GetScanners","wsclient":wsclient,"params":{**keyword_params}}
+        loop.call_soon_threadsafe(slef._cmdQueue.put_nowait, cmd)
+        
     async def cmdSubscribeStocks(self,wsclient,**keyword_params):
         # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"tick"}}
         # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"bidask"}}
