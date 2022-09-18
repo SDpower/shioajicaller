@@ -104,7 +104,7 @@ class WebsocketsHandler():
         while True:
             Item = await self._cmdQueue.get()
             logging.debug(f'CmdWorker<< {Item["cmd"]}')
-            ret = {"type": "response"}
+            ret = {"type": "response", "cmd": f'{Item["cmd"]}'}
             websocket = Item["wsclient"]
             CmdDefault = ujson.dumps({"type": "respose", "result": f'Not supported'})
             try:
