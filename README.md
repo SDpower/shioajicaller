@@ -26,6 +26,8 @@ Shioaji Warp Caller P.O.C project.
         * 指數 Indexs
             * 指令範例：{"cmd":"GetContracts","params":{"type":"Indexs","code":"001"}}
     * 訂閱Subscribe或取消
+        * 指數
+            * 指令範例：{"cmd":"SubscribeIndexs","params":{"code":"001"}}
         * 股票
             * 指令範例：{"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"tick"}}
             * 指令範例：{"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"bidask"}}
@@ -107,6 +109,7 @@ Shioaji Warp Caller P.O.C project.
         * 命令回傳
             * {"type": "response".....
         * 訂閱資料回傳
+            * {"type":"IndexsTickEvent"...........
             * {"type": "StocksTickEvent"........
             * {"type": "FuturesTickEvent"........
             * {"type": "StocksBidaskEvent"........

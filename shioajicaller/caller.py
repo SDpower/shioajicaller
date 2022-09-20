@@ -16,6 +16,7 @@ class Caller(object):
         logging.info("shioaji version:"+sj.__version__)
         print("shioaji version:"+sj.__version__)
         self._api.quote.set_event_callback(self._event_callback)
+        self._api.quote.set_quote_callback(self.Quote_callback_v0_tick)
         self._api.quote.set_on_tick_stk_v1_callback(self.Quote_callback_stk_v1_tick)
         self._api.quote.set_on_bidask_stk_v1_callback(self.Quote_callback_stk_v1_bidask)
         self._api.quote.set_on_tick_fop_v1_callback(self.Quote_callback_fop_v1_tick)
@@ -41,6 +42,10 @@ class Caller(object):
     def SetEnevtCallBack(self,callback):
         if callable(callback):
             self.EventCallback=callback
+
+    def SetSubscribeTickv0CallBack(self,callback):
+        if callable(callback):
+            self.SubscribeTickv0CallBack= callback
 
     def SetSubscribeStocksTickCallBack(self,callback):
         if callable(callback):
@@ -160,6 +165,22 @@ class Caller(object):
             contract = self._api.Contracts[type][code]
             if contract != None:
                 return contract
+            else:
+                return False
+        else:
+            return False
+
+    def SubscribeIndexs(self,code:str="",intraday_odd:bool=False):
+        quote_type = "tick"
+        version = "v0"
+        if (code == None or code ==""):
+            return False
+        logging.info(f"SubscribeIndexs {code} {quote_type} {version}")
+        if (self._check_connect()):
+            contract = self._api.Contracts.Indexs[code]
+            if contract != None:
+                self._api.quote.subscribe(contract ,quote_type=quote_type, intraday_odd=intraday_odd ,version=version)
+                return True
             else:
                 return False
         else:
@@ -320,6 +341,12 @@ class Caller(object):
             return dict(**self._api.place_order(contract, order, timeout=0,cb=self.Trade_CallBack))
         else:
             return False
+
+    def Quote_callback_v0_tick(self,topic: str, quote: dict):
+        quote['UNTime']= datetime.now()
+        quote['exchange']= f'TSE'
+        if hasattr(self, 'SubscribeTickv0CallBack'):
+            self.SubscribeTickv0CallBack(quote)
 
     def Quote_callback_stk_v1_tick(self,exchange: Exchange, tick:TickSTKv1):
         tickdata = tick.to_dict(raw=True)
