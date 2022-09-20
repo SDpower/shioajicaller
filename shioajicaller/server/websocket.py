@@ -25,6 +25,7 @@ class WebsocketsHandler():
         self._eventQueue = asyncio.Queue()
         self._oderQueue = asyncio.Queue()
         self._tradeQueue = asyncio.Queue()
+        self._subscribeIndexsTickQueue = asyncio.Queue()
         self._subscribeStocksTickQueue = asyncio.Queue()
         self._subscribeFuturesTickQueue = asyncio.Queue()
         self._subscribeStocksBidaskQueue = asyncio.Queue()
@@ -32,6 +33,7 @@ class WebsocketsHandler():
         self._subscribeClientS = set()
 
         self._callers.SetEnevtCallBack(self.EnevtCallBack)
+        self._callers.SetSubscribeTickv0CallBack(self.SubscribeIndexsTickCallBack)
         self._callers.SetSubscribeStocksTickCallBack(self.SubscribeStocksTickCallBack)
         self._callers.SetSubscribeFuturesTickCallBack(self.SubscribeFuturesTickCallBack)
         self._callers.SetSubscribeStocksBidaskCallBack(self.SubscribeStocksBidaskCallBack)
@@ -85,6 +87,9 @@ class WebsocketsHandler():
 
     def EnevtCallBack(self,item):
         loop.call_soon_threadsafe(self._eventQueue.put_nowait, item)
+
+    def SubscribeIndexsTickCallBack(self,item):
+        loop.call_soon_threadsafe(self._subscribeIndexsTickQueue.put_nowait, item)
 
     def SubscribeStocksTickCallBack(self,item):
         loop.call_soon_threadsafe(self._subscribeStocksTickQueue.put_nowait, item)
@@ -226,6 +231,29 @@ class WebsocketsHandler():
             logging.debug(f'SubscribeFuturesBidaskWorker<< {Item}')
             counter += 1
             self._subscribeFuturesBidaskQueue.task_done()
+
+    async def SubscribeIndexsTickWorker(self,name):
+        counter = 0
+        logging.info(f'{name} start!')
+        while True:
+            Item = await self._subscribeIndexsTickQueue.get()
+            if len(self._subscribeClientS)>0:
+                ret = {"type":"IndexsTickEvent","ret":Item}
+                strMsg =orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                websockets.broadcast(self._subscribeClientS, strMsg)
+
+            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                PstrMsg = orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                if hasattr(self,"_redis"):
+                    logging.debug(f'Redis publish >> {PstrMsg}')
+                    await self._redis.publish(f'shioaji.indexs.tick.{Item["code"]}', PstrMsg)
+                if hasattr(self,"_mqttClient"):
+                    logging.debug(f'Mqtt publish >> {PstrMsg}')
+                    mqtttopic = f'Shioaji/v0/indexs/tick/{Item["code"]}'
+                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+            logging.debug(f'SubscribeIndexsTickWorker<< {Item}')
+            counter += 1
+            self._subscribeIndexsTickQueue.task_done()
 
     async def SubscribeStocksTickWorker(self,name):
         counter = 0
@@ -431,6 +459,11 @@ class WebsocketsHandler():
         ret = {"type": "response", "cmd": f'SubscribeFutures', "ret": self._callers.SubscribeFutures(**keyword_params)}
         await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
+    async def cmdSubscribeIndexs(self,wsclient,**keyword_params):
+        # {"cmd":"SubscribeIndexs","params":{"code":"001"}} //only tick
+        ret = {"type": "response", "cmd": f'SubscribeIndexs', "ret": self._callers.SubscribeIndexs(**keyword_params)}
+        await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
+
     async def cmdGetScanners(slef,wsclient,**keyword_params):
         # {"cmd":"GetScanners","params":{"scanner_type":"ChangePercentRank"}}
         # {"cmd":"GetScanners","params":{"scanner_type":"ChangePriceRank"}}
@@ -520,6 +553,8 @@ def __start_wss_server(port:int=6789,callers:Caller=Caller(),pool_size:int=50,de
         loop.create_task(WebsocketsHandler.OrderWorker('OrderWorker-1'))
         loop.create_task(WebsocketsHandler.TradeWorker('TradeWorker-1'))
         loop.create_task(WebsocketsHandler.CmdWorker('CmdWorker-1'))
+        loop.create_task(WebsocketsHandler.SubscribeIndexsTickWorker('SubscribeIndexsTickWorker-1'))
+        loop.create_task(WebsocketsHandler.SubscribeIndexsTickWorker('SubscribeIndexsTickWorker-2'))
 
         for i in range(pool_size):
             loop.create_task(WebsocketsHandler.SubscribeStocksTickWorker(f'SubscribeStocksTickWorker-{i}'))
