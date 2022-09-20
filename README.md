@@ -137,7 +137,7 @@ docker run -d \
   --restart unless-stopped \
   --env-file=".env" \
   -p 6789:6789 \
-  sdpower/shioaji_caller main.py websockets -wm -ps 250
+  sdpower/shioaji_caller websockets -wm -ps 250
 ```
 
 ## 範例Example
