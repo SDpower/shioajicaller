@@ -157,16 +157,21 @@ class Caller(object):
         logging.info(f"Loading Contracts is Done.")
 
     def Contracts(self,type:str="",code:str=""):
-        if (code == None or code ==""):
-            return False
         if (type == None or type ==""):
             return False
-        if (self._check_connect()):
-            contract = self._api.Contracts[type][code]
-            if contract != None:
-                return contract
+        if (self._check_connect()):            
+            if (code == None or code ==""):
+                contract = self._api.Contracts[type]
+                if contract != None:
+                    return contract
+                else:
+                    return False
             else:
-                return False
+                contract = self._api.Contracts[type][code]
+                if contract != None:
+                    return contract
+                else:
+                    return False    
         else:
             return False
 
