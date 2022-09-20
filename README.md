@@ -235,14 +235,14 @@ Start Websockets Server Port:6789
 Connected to ws://127.0.0.1:6789/.
 < {"type": "total connects", "count": 1}
 > {"cmd":"GetAccount"}
-< {"type": "response", "account": ["person_id='XXXXXX' broker_id='XXXXXX' account_id='XXXXXXX' signed=True username='XXXXXXXXX'", "person_i
+< {"type": "response", "cmd":"GetAccount", "result":["person_id='XXXXXX' broker_id='F00000' account_id='80000000' signed=True username='XXX'","person_id='F11111111' broker_id='XAXAX' account_id='12345678' signed=True username='xxxxx'"]}
 < {"type": "SystemEvent", "ret": {"ResponseCode": 0, "Code": 0, "Message": "host '203.66.91.161:80', IP 203.66.91.161:80 (host 1 of 1) (host connection attempt 1 of 1) (total connection attempt 1 of 1)", "Description": "Session up"}}'"]}
 >
 > {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"tick"}}
-< {"type": "response", "status": true}
+< {{"type":"response","cmd":"SubscribeFutures","ret":true}
 < {"type": "SystemEvent", "ret": {"ResponseCode": 200, "Code": 16, "Message": "TIC/v1/FOP/*/TFE/TXFJ1", "Description": "Subscribe or Unsubscribe ok"}}
 > {"cmd":"GetsubscribEvents"}
-< {"type": "response", "ret": true}
+< {"type":"response","cmd":"GetsubscribEvents","ret":true}
 < {"type": "FuturesEvent", "ret": {"code": "TXFJ1", "datetime": "2021-10-04T22:15:54.513000", "open": "16345", "underlying_price": "16408.35", "bid_side_
 < {"type": "FuturesEvent", "ret": {"code": "TXFJ1", "datetime": "2021-10-04T22:15:54.701000", "open": "16345", "underlying_price": "16408.35", "bid_side_
 < {"type": "FuturesEvent", "ret": {"code": "TXFJ1", "datetime": "2021-10-04T22:15:54.963000", "open": "16345", "underlying_price": "16408.35", "bid_side_
@@ -266,7 +266,7 @@ Connected to ws://127.0.0.1:6789/.
 < {"type": "FuturesEvent", "ret": {"code": "TXFJ1", "datetime": "2021-10-04T22:16:27.668000", "open": "16345", "underlying_price": "16408.35", "bid_side_total_vol": 22504, "ask_side_total_vol": 22821, "avg_price": "16392.989883", "close": "16366", "high": "16457", "low": "16288", "amount": "81830", "total_amount": "555787929", "volume": 5, "total_volume": 33904, "tick_type": 1, "chg_type": 2, "price_chg": "5", "pct_chg": "0.03056", "simtrade": 0, "UNTime": "2021-10-04 22:16:27.515556", "exchange": "TAIFEX"}}
 < {"type": "FuturesEvent", "ret": {"code": "TXFJ1", "datetime": "2021-10-04T22:16:31.564000", "open": "16345", "underlying_price": "16408.35", "bid_side_total_vol": 22500, "ask_side_total_vol": 22824, "avg_price": "16392.988173", "close": "16364", "high": "16457", "low": "16288", "amount": "32728", "total_amount": "555820657", "volume": 2, "total_volume": 33906, "tick_type": 2, "chg_type": 2, "price_chg": "3", "pct_chg": "0.018336", "simtrade": 0, "UNTime": "2021-10-04 22:16:31.515169", "exchange": "TAIFEX"}}
   {"cmd":"RemovesubscribEvents"}
-< {"type": "response", "ret": true}
+< {"type":"response","cmd":"RemovesubscribEvents","ret":true}
 ```
 
 #### 下單範例
@@ -275,12 +275,12 @@ Connected to ws://127.0.0.1:6789/.
 Connected to ws://127.0.0.1:6789/.
 < {"type": "total connects", "count": 1}
 > {"cmd":"GetAccount"}
-< {"type": "response", "account": ["person_id='XXXXXX' broker_id='XXXXXX' account_id='XXXXXXX' signed=True username='XXXXXXXXX'", "person_i
+< {"type": "response", "cmd":"GetAccount", "result":["person_id='XXXXXX' broker_id='F00000' account_id='80000000' signed=True username='XXX'","person_id='F11111111' broker_id='XAXAX' account_id='12345678' signed=True username='xxxxx'"]}
 < {"type": "SystemEvent", "ret": {"ResponseCode": 0, "Code": 0, "Message": "host '203.66.91.161:80', IP 203.66.91.161:80 (host 1 of 1) (host connection attempt 1 of 1) (total connection attempt 1 of 1)", "Description": "Session up"}}'"]}
 > {"cmd":"ActivateCa","params":{"PersonId":"XXXXXXX","CaPasswd":"XXXXXXX","ActivateCa":"......."}}
-< {"type":"response","result":true}
+< {"type":"response","cmd":"ActivateCa","ret":true}
 > {"cmd":"OrderFutures","params":{"code":"MXFL1","price":17880.0,"quantity":1,"action":"Sell","price_type":"LMT","order_type":"IOC","octype":"DayTrade"}}
-< {"type":"response","result":true}
+< {"type":"response","cmd":"OrderFutures","ret":true}
 < {"type":"TradeEvent","ret":{"contract":{"code":"MXFL1","symbol":"MXF202112","name":"AAAAAAAA","category":"MXF","delivery_month":"202112","delivery_date":"2021\/12\/15","underlying_kind":"I","unit":1,"limit_up":19637.0,"limit_down":16067.0,"reference":17852.0,"update_date":"2021\/11\/22"},"status":{"id":"5e1943de","status":"PendingSubmit","status_code":"    ","order_datetime":"2021-11-22 11:04:19","deals":[]},"order":{"action":"Sell","price":17880.0,"quantity":1,"id":"5e1943de","seqno":"762613","account":{"account_type":"F","person_id":"XXXXXXX","broker_id":"XXXXXXX","account_id":"XXXXXXX","signed":true},"ca":"........","price_type":"LMT","order_type":"IOC","octype":"DayTrade"}}}
 < {"type":"OderEvent","ret":["FORDER",{"operation":{"op_type":"New","op_code":"00","op_msg":""},"order":{"id":"5e1943de","seqno":"762613","ordno":"t00Gw","account":{"account_type":"F","person_id":"","broker_id":"XXXXXXX","account_id":"3918061","signed":true},"action":"Sell","price":17880.0,"quantity":1,"order_type":"IOC","market_type":"Day","oc_type":"DayTrade","subaccount":""},"status":{"id":"5e1943de","exchange_ts":1637550559,"modified_price":0.0,"cancel_quantity":0,"order_quantity":1},"contract":{"security_type":"FUT","code":"MXF","exchange":"TIM","delivery_month":"XXXXXXX","delivery_date":"","strike_price":0.0,"option_right":"Future"}}]}
 < {"type":"OderEvent","ret":["FORDER",{"operation":{"op_type":"Cancel","op_code":"00","op_msg":""},"order":{"id":"5e1943de","seqno":"762613","ordno":"t00Gw","account":{"account_type":"F","person_id":"","broker_id":"XXXXXXX","account_id":"3918061","signed":true},"action":"Sell","price":17880.0,"quantity":1,"order_type":"IOC","market_type":"Day","oc_type":"DayTrade","subaccount":""},"status":{"id":"5e1943de","exchange_ts":1637550559,"modified_price":0.0,"cancel_quantity":1,"order_quantity":1},"contract":{"security_type":"FUT","code":"MXF","exchange":"TIM","delivery_month":"XXXXXXX","delivery_date":"","strike_price":0.0,"option_right":"Future"}}]}

@@ -106,12 +106,12 @@ class WebsocketsHandler():
             logging.debug(f'CmdWorker<< {Item["cmd"]}')
             ret = {"type": "response", "cmd": f'{Item["cmd"]}'}
             websocket = Item["wsclient"]
-            CmdDefault = orjson.dumps({"type": "respose", "result": f'Not supported'}, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+            CmdDefault = orjson.dumps({"type": "respose", "ret": f'Not supported'}, default=str, option=orjson.OPT_NAIVE_UTC).decode()
             try:
                 if 'params' in Item.keys():
-                    ret["result"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)(**Item["params"])
+                    ret["ret"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)(**Item["params"])
                 else:
-                    ret["result"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)()
+                    ret["ret"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)()
             except AttributeError:
                 pass
 
@@ -282,7 +282,7 @@ class WebsocketsHandler():
             await websocket.send(orjson.dumps({"error": "wrong formate message."}).decode())
             return
         logging.info("<< "+ self._message)
-        CmdDefault = orjson.dumps({"type": "respose", "result": f'command not found.'}).decode()
+        CmdDefault = orjson.dumps({"type": "respose", "ret": f'command not found.'}).decode()
         if 'params' not in self._data:
             logging.info(f'cmd{self._data["cmd"]}')
             result = await getattr(self, f'cmd{self._data["cmd"]}', lambda: CmdDefault)(wsclient= websocket)
@@ -294,21 +294,21 @@ class WebsocketsHandler():
 
     async def cmdID(self,wsclient):
         # {"cmd":"ID"}
-        ret = {"type": "response","ret":True}
+        ret = {"type": "response","cmd": f'ID' ,"ret":True}
         ret["id"] = f'{self._websocket.id}'
         self._subscribeClientS.add(wsclient)
         await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdGetsubscribEvents(self,wsclient):
         # {"cmd":"GetsubscribEvents"}
-        ret = {"type": "response","ret":True}
+        ret = {"type": "response","cmd": f'GetsubscribEvents' ,"ret":True}
         self._subscribeClientS.discard(wsclient)
         self._subscribeClientS.add(wsclient)
         await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdRemovesubscribEvents(self,wsclient):
         # {"cmd":"RemovesubscribEvents"}
-        ret = {"type": "response","ret":True}
+        ret = {"type": "response","cmd": f'RemovesubscribEvents' ,"ret":True}
         self._subscribeClientS.discard(wsclient)
         await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
@@ -350,7 +350,7 @@ class WebsocketsHandler():
 
     async def cmdLogout(self,wsclient):
         # {"cmd":"Logout"}
-        ret = {"type": "response", "ret": self._callers.LogOut()}
+        ret = {"type": "response","cmd": f'Logout' , "ret": self._callers.LogOut()}
         await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdGetOrderList(self,wsclient):
@@ -361,7 +361,7 @@ class WebsocketsHandler():
     async def cmdUpdateOrderById(self,wsclient,**keyword_params):
         # {"cmd":"UpdateOrderById","params":{"id":"d12b7777","price":17880.0}}
         if "id" not in keyword_params:
-            ret = {"type": "response", "ret": False}
+            ret = {"type": "response","cmd": f'UpdateOrderById' ,"ret": False}
             await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
         else:
             keyword_params["order_id"] = keyword_params["id"]
@@ -372,7 +372,7 @@ class WebsocketsHandler():
     async def cmdCancelOrderById(self,wsclient,**keyword_params):
         # {"cmd":"CancelOrderById","params":{"id":"d12b7777"}}
         if "id" not in keyword_params:
-            ret = {"type": "response", "ret": False}
+            ret = {"type": "response","cmd": f'CancelOrderById' ,"ret": False}
             await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
         else:
             cmd =  {"cmd":"CancelOrderById","wsclient":wsclient,"params":{"order_id":keyword_params["id"]}}
@@ -381,7 +381,7 @@ class WebsocketsHandler():
     async def cmdGetOrderById(self,wsclient,**keyword_params):
         # {"cmd":"GetOrderById","params":{"id":"d12b7777"}}
         if "id" not in keyword_params:
-            ret = {"type": "response", "ret": False}
+            ret = {"type": "response","cmd": f'GetOrderById' , "ret": False}
             await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
         else:
             cmd =  {"cmd":"GetOrderById","wsclient":wsclient,"params":{"order_id":keyword_params["id"]}}
@@ -407,14 +407,14 @@ class WebsocketsHandler():
                     file_to_save.write(decoded_image_data)
                     file_to_save.close()
                     if "PersonId" in keyword_params:
-                        ret = {"type": "response", "ret": self._callers.ActivateCa(Cafiles="SinopacWS.pfx",CaPasswd=keyword_params["CaPasswd"],PersonId=keyword_params["PersonId"])}
+                        ret = {"type": "response","cmd": f'ActivateCa' , "ret": self._callers.ActivateCa(Cafiles="SinopacWS.pfx",CaPasswd=keyword_params["CaPasswd"],PersonId=keyword_params["PersonId"])}
                     else:
-                        ret = {"type": "response", "ret": self._callers.ActivateCa(Cafiles="SinopacWS.pfx",CaPasswd=keyword_params["CaPasswd"])}
+                        ret = {"type": "response","cmd": f'ActivateCa' , "ret": self._callers.ActivateCa(Cafiles="SinopacWS.pfx",CaPasswd=keyword_params["CaPasswd"])}
                     os.remove("SinopacWS.pfx")
             except Exception as e:
-                ret = {"type": "response", "ret": False,"message":str(e)}
+                ret = {"type": "response","cmd": f'ActivateCa' , "ret": False,"message":str(e)}
         else:
-            ret = {"type": "response", "ret": False,"message":"Miss CA string or CaPasswd."}
+            ret = {"type": "response","cmd": f'ActivateCa' , "ret": False,"message":"Miss CA string or CaPasswd."}
         await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdGetContracts(self,wsclient,**keyword_params):
@@ -422,13 +422,13 @@ class WebsocketsHandler():
         # {"cmd":"GetContracts","params":{"type":"Futures","code":"TXFB2"}}
         # {"cmd":"GetContracts","params":{"type":"Options","code":"TXO17500C2"}}
         # {"cmd":"GetContracts","params":{"type":"Indexs","code":"001"}}
-        ret = {"type": "response", "status": self._callers.Contracts(**keyword_params)}
+        ret = {"type": "response", "cmd": f'GetContracts', "ret": self._callers.Contracts(**keyword_params)}
         await wsclient.send(orjson.dumps(ret, default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdSubscribeFutures(self,wsclient,**keyword_params):
         # {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"tick"}}
         # {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"bidask"}}
-        ret = {"type": "response", "status": self._callers.SubscribeFutures(**keyword_params)}
+        ret = {"type": "response", "cmd": f'SubscribeFutures', "ret": self._callers.SubscribeFutures(**keyword_params)}
         await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdGetScanners(slef,wsclient,**keyword_params):
@@ -443,7 +443,7 @@ class WebsocketsHandler():
     async def cmdSubscribeStocks(self,wsclient,**keyword_params):
         # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"tick"}}
         # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"bidask"}}
-        ret = {"type": "response", "status": self._callers.SubscribeStocks(**keyword_params)}
+        ret = {"type": "response", "cmd": f'SubscribeStocks', "ret": self._callers.SubscribeStocks(**keyword_params)}
         await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdGetTicks(self,wsclient,**keyword_params):
