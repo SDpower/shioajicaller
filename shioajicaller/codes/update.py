@@ -3,13 +3,22 @@
 # TSE 上市證券
 # OTC 上櫃證券
 # Future 期貨
+# Option 選擇權
+# Indexs 指數
 
 import os
 import redis
-import csv,json
-from json import JSONEncoder
+import orjson
+import csv
 from collections import namedtuple
 from shioajicaller.caller import Caller
+
+IndexsROW = namedtuple('Indexs', [
+                        'exchange',
+                        'code',
+                        'symbol',
+                        'name',
+                        'currency'])
 
 StockROW = namedtuple('Stock', [
                         'exchange',
@@ -115,9 +124,16 @@ def toStockRowData(result,data):
                 item["update_date"],
                 item["day_trade"]))
 
-class EmployeeEncoder(JSONEncoder):
-        def default(self, o):
-            return o.__dict__
+def toIndexRowData(result,data):
+    if (data != None):
+        for code in data:
+            result.append(IndexsROW(
+                data[code]["exchange"],
+                data[code]["code"],
+                data[code]["symbol"],
+                data[code]["name"],
+                data[code]["currency"]
+            ))
 
 def clear_redis(redisHost: str,redisPort: int,redisDb: str,prefix = 'stock'):
     rServer= redis.StrictRedis(redisHost,redisPort,redisDb)
@@ -129,19 +145,33 @@ def to_redis(results,redisHost: str,redisPort: int,redisDb: str,prefix = 'stock'
         return
     rServer= redis.StrictRedis(redisHost,redisPort,redisDb)
     for item in results:
-        if prefix != "stock":
+        if prefix == "indexs":
+            key = f'{prefix}:{item.exchange}:{item.code}'
+        elif prefix != "stock":
             key = f'{prefix}:{item.category}:{item.code}'
         else:
             key = f'{prefix}:{item.exchange}:{item.code}'
-        jstr = json.dumps(item,cls=EmployeeEncoder)
-        setObj = json.loads(jstr)
-        rServer.hset(key,mapping=setObj)
+        
+        if prefix == "indexs":
+            jstr = orjson.dumps(item._asdict(), default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC)
+        else:
+            jstr = orjson.dumps(item, default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC)
+        setObj = orjson.loads(jstr)
+        rServer.hset(key,mapping=setObj)        
         if prefix == "stock" and item.category !="00" and item.category !="":
             key = f'{prefix}:{item.category}:{item.exchange}:{item.code}'
             rServer.hset(key,mapping=setObj)
 
 def __update_codes_redis(callers: Caller,redisHost: str,redisPort: int,redisDb: str):
     callers.Login()
+
+    resultIndexs= []
+    IndexsData = callers.Contracts(type="Indexs")["_code2contract"]
+    toIndexRowData(resultIndexs,IndexsData)
+    if len(resultIndexs) > 0:
+        clear_redis(redisHost,redisPort,redisDb,prefix='indexs')
+        to_redis(resultIndexs, redisHost,redisPort,redisDb,prefix="indexs")
+
     TSEdata = callers.getContractsStocks("TSE")
     OTCdata = callers.getContractsStocks("OTC")
     if TSEdata != None and OTCdata != None :
@@ -162,6 +192,10 @@ def __update_codes_redis(callers: Caller,redisHost: str,redisPort: int,redisDb: 
 
 def __update_codes(callers: Caller):
     callers.Login()
+    resultIndexs=[]
+    IndexsData = callers.Contracts(type="Indexs")["_code2contract"]    
+    toIndexRowData(resultIndexs,IndexsData)
+    to_csv(resultIndexs, 'IndexsTWSE.csv')
     resultStock=[]
     TSEdata = callers.getContractsStocks("TSE")
     OTCdata = callers.getContractsStocks("OTC")
