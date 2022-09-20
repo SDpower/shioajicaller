@@ -3,7 +3,7 @@ import asyncio
 import aioredis
 import os, sys, base64
 import logging
-import ujson
+import orjson
 import time
 import websockets
 from gmqtt import Client as MQTTClient
@@ -106,7 +106,7 @@ class WebsocketsHandler():
             logging.debug(f'CmdWorker<< {Item["cmd"]}')
             ret = {"type": "response", "cmd": f'{Item["cmd"]}'}
             websocket = Item["wsclient"]
-            CmdDefault = ujson.dumps({"type": "respose", "result": f'Not supported'})
+            CmdDefault = orjson.dumps({"type": "respose", "result": f'Not supported'}, default=str, option=orjson.OPT_NAIVE_UTC).decode()
             try:
                 if 'params' in Item.keys():
                     ret["result"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)(**Item["params"])
@@ -115,7 +115,7 @@ class WebsocketsHandler():
             except AttributeError:
                 pass
 
-            await websocket.send(ujson.dumps(ret, default=str, ensure_ascii=False))
+            await websocket.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
             counter += 1
             self._cmdQueue.task_done()
 
@@ -125,11 +125,11 @@ class WebsocketsHandler():
         while True:
             Item = await self._oderQueue.get()
             ret = {"type":"OderEvent","ret":Item}
-            strMsg = ujson.dumps(ret, default=str)
+            strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
             logging.debug(f'OderEvent<< {strMsg}')
             websockets.broadcast(ClientS, strMsg)
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = ujson.dumps(Item, default=str)
+                PstrMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
                 if hasattr(self,"_redis"):
                     logging.debug(f'Redis publish >> {PstrMsg}')
                     await self._redis.publish("shioaji.order", PstrMsg)
@@ -146,11 +146,11 @@ class WebsocketsHandler():
         while True:
             Item = await self._tradeQueue.get()
             ret = {"type":"TradeEvent","ret":Item}
-            strMsg = ujson.dumps(ret, default=str)
+            strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
             logging.debug(f'TradeEvent<< {strMsg}')
             websockets.broadcast(ClientS, strMsg)
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = ujson.dumps(Item, default=str)
+                PstrMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
                 if hasattr(self,"_redis"):
                     logging.debug(f'Redis publish >> {PstrMsg}')
                     await self._redis.publish("shioaji.trade", PstrMsg)
@@ -167,11 +167,11 @@ class WebsocketsHandler():
         while True:
             Item = await self._eventQueue.get()
             ret = {"type":"SystemEvent","ret":Item}
-            strMsg = ujson.dumps(ret, default=str)
+            strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
             logging.debug(f'EnevtWorker<< {strMsg}')
             websockets.broadcast(ClientS, strMsg)
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = ujson.dumps(Item, default=str)
+                PstrMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
                 if hasattr(self,"_redis"):
                     logging.debug(f'Redis publish >> {PstrMsg}')
                     await self._redis.publish("shioaji.system", PstrMsg)
@@ -189,11 +189,11 @@ class WebsocketsHandler():
             Item = await self._subscribeStocksBidaskQueue.get()
             if len(self._subscribeClientS)>0:
                 ret = {"type":"StocksBidaskEvent","ret":Item}
-                strMsg = ujson.dumps(ret, default=str)
+                strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
                 websockets.broadcast(self._subscribeClientS, strMsg)
 
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = ujson.dumps(Item, default=str)
+                PstrMsg = orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
                 if hasattr(self,"_redis"):
                     logging.debug(f'Redis publish >> {PstrMsg}')
                     await self._redis.publish(f'shioaji.stocks.bidask.{Item["code"]}', PstrMsg)
@@ -212,10 +212,10 @@ class WebsocketsHandler():
             Item = await self._subscribeFuturesBidaskQueue.get()
             if len(self._subscribeClientS)>0:
                 ret = {"type":"FuturesBidaskEvent","ret":Item}
-                strMsg = ujson.dumps(ret, default=str)
+                strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
                 websockets.broadcast(self._subscribeClientS, strMsg)
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = ujson.dumps(Item, default=str)
+                PstrMsg = orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
                 if hasattr(self,"_redis"):
                     logging.debug(f'Redis publish >> {PstrMsg}')
                     await self._redis.publish(f'shioaji.futures.bidask.{Item["code"]}', PstrMsg)
@@ -234,11 +234,11 @@ class WebsocketsHandler():
             Item = await self._subscribeStocksTickQueue.get()
             if len(self._subscribeClientS)>0:
                 ret = {"type":"StocksTickEvent","ret":Item}
-                strMsg = ujson.dumps(ret, default=str)
+                strMsg =orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
                 websockets.broadcast(self._subscribeClientS, strMsg)
 
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = ujson.dumps(Item, default=str)
+                PstrMsg = orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
                 if hasattr(self,"_redis"):
                     logging.debug(f'Redis publish >> {PstrMsg}')
                     await self._redis.publish(f'shioaji.stocks.tick.{Item["code"]}', PstrMsg)
@@ -257,10 +257,10 @@ class WebsocketsHandler():
             Item = await self._subscribeFuturesTickQueue.get()
             if len(self._subscribeClientS)>0:
                 ret = {"type":"FuturesTickEvent","ret":Item}
-                strMsg = ujson.dumps(ret, default=str)
+                strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
                 websockets.broadcast(self._subscribeClientS, strMsg)
             if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = ujson.dumps(Item, default=str)
+                PstrMsg =orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
                 if hasattr(self,"_redis"):
                     logging.debug(f'Redis publish >> {PstrMsg}')
                     await self._redis.publish(f'shioaji.futures.tick.{Item["code"]}', PstrMsg)
@@ -279,10 +279,10 @@ class WebsocketsHandler():
             return
         self._data = self.checkFormateMessage(self._message)
         if (self._data == None):
-            await websocket.send(ujson.dumps({"error": "wrong formate message."}))
+            await websocket.send(orjson.dumps({"error": "wrong formate message."}).decode())
             return
         logging.info("<< "+ self._message)
-        CmdDefault = ujson.dumps({"type": "respose", "result": f'command not found.'})
+        CmdDefault = orjson.dumps({"type": "respose", "result": f'command not found.'}).decode()
         if 'params' not in self._data:
             logging.info(f'cmd{self._data["cmd"]}')
             result = await getattr(self, f'cmd{self._data["cmd"]}', lambda: CmdDefault)(wsclient= websocket)
@@ -297,20 +297,20 @@ class WebsocketsHandler():
         ret = {"type": "response","ret":True}
         ret["id"] = f'{self._websocket.id}'
         self._subscribeClientS.add(wsclient)
-        await wsclient.send(ujson.dumps(ret, default=str))
+        await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdGetsubscribEvents(self,wsclient):
         # {"cmd":"GetsubscribEvents"}
         ret = {"type": "response","ret":True}
         self._subscribeClientS.discard(wsclient)
         self._subscribeClientS.add(wsclient)
-        await wsclient.send(ujson.dumps(ret, default=str))
+        await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdRemovesubscribEvents(self,wsclient):
         # {"cmd":"RemovesubscribEvents"}
         ret = {"type": "response","ret":True}
         self._subscribeClientS.discard(wsclient)
-        await wsclient.send(ujson.dumps(ret, default=str))
+        await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdGetAccount(self,wsclient):
         # {"cmd":"GetAccount"}
@@ -351,7 +351,7 @@ class WebsocketsHandler():
     async def cmdLogout(self,wsclient):
         # {"cmd":"Logout"}
         ret = {"type": "response", "ret": self._callers.LogOut()}
-        await wsclient.send(ujson.dumps(ret, default=str))
+        await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdGetOrderList(self,wsclient):
         # {"cmd":"GetOrderList"}
@@ -362,7 +362,7 @@ class WebsocketsHandler():
         # {"cmd":"UpdateOrderById","params":{"id":"d12b7777","price":17880.0}}
         if "id" not in keyword_params:
             ret = {"type": "response", "ret": False}
-            await wsclient.send(ujson.dumps(ret, default=str))
+            await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
         else:
             keyword_params["order_id"] = keyword_params["id"]
             del keyword_params["id"]
@@ -373,7 +373,7 @@ class WebsocketsHandler():
         # {"cmd":"CancelOrderById","params":{"id":"d12b7777"}}
         if "id" not in keyword_params:
             ret = {"type": "response", "ret": False}
-            await wsclient.send(ujson.dumps(ret, default=str))
+            await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
         else:
             cmd =  {"cmd":"CancelOrderById","wsclient":wsclient,"params":{"order_id":keyword_params["id"]}}
             loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
@@ -382,7 +382,7 @@ class WebsocketsHandler():
         # {"cmd":"GetOrderById","params":{"id":"d12b7777"}}
         if "id" not in keyword_params:
             ret = {"type": "response", "ret": False}
-            await wsclient.send(ujson.dumps(ret, default=str))
+            await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
         else:
             cmd =  {"cmd":"GetOrderById","wsclient":wsclient,"params":{"order_id":keyword_params["id"]}}
             loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
@@ -415,7 +415,7 @@ class WebsocketsHandler():
                 ret = {"type": "response", "ret": False,"message":str(e)}
         else:
             ret = {"type": "response", "ret": False,"message":"Miss CA string or CaPasswd."}
-        await wsclient.send(ujson.dumps(ret, default=str))
+        await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdGetContracts(self,wsclient,**keyword_params):
         # {"cmd":"GetContracts","params":{"type":"Stocks","code":"2330"}}
@@ -423,13 +423,13 @@ class WebsocketsHandler():
         # {"cmd":"GetContracts","params":{"type":"Options","code":"TXO17500C2"}}
         # {"cmd":"GetContracts","params":{"type":"Indexs","code":"001"}}
         ret = {"type": "response", "status": self._callers.Contracts(**keyword_params)}
-        await wsclient.send(ujson.dumps(ret,default=lambda obj: obj.__dict__))
+        await wsclient.send(orjson.dumps(ret, default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdSubscribeFutures(self,wsclient,**keyword_params):
         # {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"tick"}}
         # {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"bidask"}}
         ret = {"type": "response", "status": self._callers.SubscribeFutures(**keyword_params)}
-        await wsclient.send(ujson.dumps(ret, default=str))
+        await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdGetScanners(slef,wsclient,**keyword_params):
         # {"cmd":"GetScanners","params":{"scanner_type":"ChangePercentRank"}}
@@ -444,7 +444,7 @@ class WebsocketsHandler():
         # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"tick"}}
         # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"bidask"}}
         ret = {"type": "response", "status": self._callers.SubscribeStocks(**keyword_params)}
-        await wsclient.send(ujson.dumps(ret, default=str))
+        await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
     async def cmdGetTicks(self,wsclient,**keyword_params):
         # {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08"}}
@@ -464,14 +464,14 @@ class WebsocketsHandler():
 
     def checkFormateMessage(self,message):
         try:
-            return ujson.loads(message)
+            return orjson.loads(message)
         except:
             pass
         finally:
             pass
 
     def ClientS_event(self):
-        return ujson.dumps({"type": "total connects", "count": len(ClientS)})
+        return orjson.dumps({"type": "total connects", "count": len(ClientS)}).decode()
 
 WebsocketsHandler = WebsocketsHandler()
 

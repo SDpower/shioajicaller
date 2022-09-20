@@ -14,7 +14,6 @@ websockets = "^10.0"
 uvloop = "^0.16.0"
 aioredis = "2.0.0"
 gmqtt = "^0.6.10"
-ujson = "^5.1.0"
 
 [tool.poetry.dev-dependencies]
 
