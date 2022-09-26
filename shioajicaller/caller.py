@@ -349,7 +349,9 @@ class Caller(object):
 
     def Quote_callback_v0_tick(self,topic: str, quote: dict):
         quote['UNTime']= datetime.now()
-        quote['exchange']= f'TSE'
+        tmp = topic.split("/")
+        quote['code'] = tmp[2]
+        quote['exchange']= tmp[1]
         if hasattr(self, 'SubscribeTickv0CallBack'):
             self.SubscribeTickv0CallBack(quote)
 
