@@ -1,32 +1,43 @@
 # -*- coding: utf-8 -*-
 import asyncio
+import concurrent.futures
 import aioredis
-import os, sys, base64
+import os, sys, base64, signal
 import logging
+import queue
+import threading as td
 import orjson
 import time
 import websockets
 from gmqtt import Client as MQTTClient
-import uvloop
 from ..caller import Caller
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s %(levelname)s %(thread)d %(message)s",
+)
+
+if os.name == 'posix':
+    try:
+        import uvloop
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    except Exception:
+        pass
+
 
 STOP = asyncio.Event()
 ClientS = set()
 loop = asyncio.get_event_loop()
-logging.basicConfig(
-    level=logging.WARNING,
-    format="%(asctime)s %(levelname)s %(message)s",
-)
+
 class WebsocketsHandler():
     def SetCallers(self,callers:Caller):
         self._callers = callers
-        self._cmdQueue = asyncio.Queue()
-        self._eventQueue = asyncio.Queue()
-        self._oderQueue = asyncio.Queue()
-        self._tradeQueue = asyncio.Queue()
-        self._subscribeIndexsTickQueue = asyncio.Queue()
-        self._subscribeStocksTickQueue = asyncio.Queue()
+        self._cmdQueue = queue.SimpleQueue()
+        self._eventQueue = queue.SimpleQueue()
+        self._oderQueue = queue.SimpleQueue()
+        self._tradeQueue = queue.SimpleQueue()
+        self._subscribeIndexsTickQueue = queue.SimpleQueue()
+        self._subscribeStocksTickQueue = queue.SimpleQueue()
         self._subscribeFuturesTickQueue = asyncio.Queue()
         self._subscribeStocksBidaskQueue = asyncio.Queue()
         self._subscribeFuturesBidaskQueue = asyncio.Queue()
@@ -80,19 +91,19 @@ class WebsocketsHandler():
         logging.info(f"SetRedisConnections! {redisHost}:{redisPort}:{redisDb}")
 
     def OrderCallBack(self,*args):
-        loop.call_soon_threadsafe(self._oderQueue.put_nowait, args)
+        self._SetSimpleQueue(self._oderQueue, args)
 
     def TradeCallBack(self,**keyword_params):
-        loop.call_soon_threadsafe(self._tradeQueue.put_nowait, keyword_params)
+        self._SetSimpleQueue(self._tradeQueue, keyword_params)
 
     def EnevtCallBack(self,item):
-        loop.call_soon_threadsafe(self._eventQueue.put_nowait, item)
+        self._SetSimpleQueue(self._eventQueue, item)
 
     def SubscribeIndexsTickCallBack(self,item):
-        loop.call_soon_threadsafe(self._subscribeIndexsTickQueue.put_nowait, item)
+        self._SetSimpleQueue(self._subscribeIndexsTickQueue, item)
 
     def SubscribeStocksTickCallBack(self,item):
-        loop.call_soon_threadsafe(self._subscribeStocksTickQueue.put_nowait, item)
+        self._SetSimpleQueue(self._subscribeStocksTickQueue, item)
 
     def SubscribeFuturesTickCallBack(self,item):
         loop.call_soon_threadsafe(self._subscribeFuturesTickQueue.put_nowait, item)
@@ -103,88 +114,107 @@ class WebsocketsHandler():
     def SubscribeFuturesBidaskCallBack(self,item):
         loop.call_soon_threadsafe(self._subscribeFuturesBidaskQueue.put_nowait, item)
 
-    async def CmdWorker(self,name):
+    async def CmdWorker(self,name,executor: concurrent.futures.Executor):
         counter = 0
         logging.info(f'{name} start!')
-        while True:
-            Item = await self._cmdQueue.get()
-            logging.debug(f'CmdWorker<< {Item["cmd"]}')
-            ret = {"type": "response", "cmd": f'{Item["cmd"]}'}
-            websocket = Item["wsclient"]
-            CmdDefault = orjson.dumps({"type": "respose", "ret": f'Not supported'}, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-            try:
-                if 'params' in Item.keys():
-                    ret["ret"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)(**Item["params"])
-                else:
-                    ret["ret"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)()
-            except AttributeError:
-                pass
-            await websocket.send(orjson.dumps(ret, default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC).decode())            
-            counter += 1
-            self._cmdQueue.task_done()
+        loop = asyncio.get_running_loop()
+        try:
+            while True:
+                Item = await loop.run_in_executor(executor, self._GetEventSQueue, self._cmdQueue)
+                logging.debug(f'CmdWorker<< {Item["cmd"]}')
+                ret = {"type": "response", "cmd": f'{Item["cmd"]}'}
+                websocket = Item["wsclient"]
+                CmdDefault = orjson.dumps({"type": "respose", "ret": f'Not supported'}, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                try:
+                    if 'params' in Item.keys():
+                        ret["ret"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)(**Item["params"])
+                    else:
+                        ret["ret"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)()
+                except AttributeError:
+                    pass
+                await websocket.send(orjson.dumps(ret, default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC).decode())            
+                counter += 1
+        except (Exception,asyncio.CancelledError, KeyboardInterrupt):
+            logging.info(f'{name}'+' Cancelled task')
 
-    async def OrderWorker(self,name):
+    async def OrderWorker(self,name,executor: concurrent.futures.Executor):
         counter = 0
         logging.info(f'{name} start!')
-        while True:
-            Item = await self._oderQueue.get()
-            ret = {"type":"OderEvent","ret":Item}
-            strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-            logging.debug(f'OderEvent<< {strMsg}')
-            websockets.broadcast(ClientS, strMsg)
-            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                if hasattr(self,"_redis"):
-                    logging.debug(f'Redis publish >> {PstrMsg}')
-                    await self._redis.publish("shioaji.order", PstrMsg)
-                if hasattr(self,"_mqttClient"):
-                    logging.debug(f'Mqtt publish >> {PstrMsg}')
-                    mqtttopic = f'Shioaji/v1/order'
-                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
-            counter += 1
-            self._oderQueue.task_done()
+        loop = asyncio.get_running_loop()
+        try:
+            while True:
+                Item = await loop.run_in_executor(executor, self._GetEventSQueue, self._oderQueue)
+                ret = {"type":"OderEvent","ret":Item}
+                strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                logging.debug(f'OderEvent<< {strMsg}')
+                websockets.broadcast(ClientS, strMsg)
+                if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                    PstrMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    if hasattr(self,"_redis"):
+                        logging.debug(f'Redis publish >> {PstrMsg}')
+                        await self._redis.publish("shioaji.order", PstrMsg)
+                    if hasattr(self,"_mqttClient"):
+                        logging.debug(f'Mqtt publish >> {PstrMsg}')
+                        mqtttopic = f'Shioaji/v1/order'
+                        self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+                counter += 1
+        except (Exception,asyncio.CancelledError, KeyboardInterrupt):
+            logging.info(f'{name}'+' Cancelled task')
 
-    async def TradeWorker(self,name):
+    async def TradeWorker(self,name,executor: concurrent.futures.Executor):
         counter = 0
         logging.info(f'{name} start!')
-        while True:
-            Item = await self._tradeQueue.get()
-            ret = {"type":"TradeEvent","ret":Item}
-            strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-            logging.debug(f'TradeEvent<< {strMsg}')
-            websockets.broadcast(ClientS, strMsg)
-            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                if hasattr(self,"_redis"):
-                    logging.debug(f'Redis publish >> {PstrMsg}')
-                    await self._redis.publish("shioaji.trade", PstrMsg)
-                if hasattr(self,"_mqttClient"):
-                    logging.debug(f'Mqtt publish >> {PstrMsg}')
-                    mqtttopic = f'Shioaji/v1/trade'
-                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
-            counter += 1
-            self._tradeQueue.task_done()
+        loop = asyncio.get_running_loop()
+        try:
+            while True:
+                Item = await loop.run_in_executor(executor, self._GetEventSQueue, self._tradeQueue)
+                ret = {"type":"TradeEvent","ret":Item}
+                strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                logging.debug(f'TradeEvent<< {strMsg}')
+                websockets.broadcast(ClientS, strMsg)
+                if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                    PstrMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    if hasattr(self,"_redis"):
+                        logging.debug(f'Redis publish >> {PstrMsg}')
+                        await self._redis.publish("shioaji.trade", PstrMsg)
+                    if hasattr(self,"_mqttClient"):
+                        logging.debug(f'Mqtt publish >> {PstrMsg}')
+                        mqtttopic = f'Shioaji/v1/trade'
+                        self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+                counter += 1
+        except (Exception,asyncio.CancelledError, KeyboardInterrupt):
+            logging.info(f'{name}'+' Cancelled task')
 
-    async def EnevtWorker(self,name):
+    def _SetSimpleQueue(self,Queue: queue.SimpleQueue,item):
+        Queue.put_nowait(item)
+
+    def _GetEventSQueue(self,Queue: queue.SimpleQueue):
+        return Queue.get()
+
+    async def EnevtWorker(self,name,executor: concurrent.futures.Executor):
         counter = 0
         logging.info(f'{name} start!')
-        while True:
-            Item = await self._eventQueue.get()
-            ret = {"type":"SystemEvent","ret":Item}
-            strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-            logging.debug(f'EnevtWorker<< {strMsg}')
-            websockets.broadcast(ClientS, strMsg)
-            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                if hasattr(self,"_redis"):
-                    logging.debug(f'Redis publish >> {PstrMsg}')
-                    await self._redis.publish("shioaji.system", PstrMsg)
-                if hasattr(self,"_mqttClient"):
-                    logging.debug(f'Mqtt publish >> {PstrMsg}')
-                    mqtttopic = f'Shioaji/v1/system'
-                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
-            counter += 1
-            self._eventQueue.task_done()
+        loop = asyncio.get_running_loop()
+        try:
+            while True:
+                Item = await loop.run_in_executor(executor, self._GetEventSQueue, self._eventQueue)
+                logging.info(f'{name} Queus')
+                ret = {"type":"SystemEvent","ret":Item}
+                strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                logging.debug(f'EnevtWorker<< {strMsg}')
+                websockets.broadcast(ClientS, strMsg)
+                if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                    PstrMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    if hasattr(self,"_redis"):
+                        logging.debug(f'Redis publish >> {PstrMsg}')
+                        # await self._redis.publish("shioaji.system", PstrMsg)
+                    if hasattr(self,"_mqttClient"):
+                        logging.debug(f'Mqtt publish >> {PstrMsg}')
+                        mqtttopic = f'Shioaji/v1/system'
+                        self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+                counter += 1
+        except (Exception,asyncio.CancelledError, KeyboardInterrupt):
+            logging.info(f'{name}'+' Cancelled task')            
 
     async def SubscribeStocksBidaskWorker(self,name):
         counter = 0
@@ -231,51 +261,57 @@ class WebsocketsHandler():
             counter += 1
             self._subscribeFuturesBidaskQueue.task_done()
 
-    async def SubscribeIndexsTickWorker(self,name):
+    async def SubscribeIndexsTickWorker(self,name,executor: concurrent.futures.Executor):
         counter = 0
         logging.info(f'{name} start!')
-        while True:
-            Item = await self._subscribeIndexsTickQueue.get()
-            if len(self._subscribeClientS)>0:
-                ret = {"type":"IndexsTickEvent","ret":Item}
-                strMsg =orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                websockets.broadcast(self._subscribeClientS, strMsg)
+        loop = asyncio.get_running_loop()
+        try:
+            while True:
+                Item = await loop.run_in_executor(executor, self._GetEventSQueue, self._subscribeIndexsTickQueue)
+                if len(self._subscribeClientS)>0:
+                    ret = {"type":"IndexsTickEvent","ret":Item}
+                    strMsg =orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    websockets.broadcast(self._subscribeClientS, strMsg)
 
-            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                if hasattr(self,"_redis"):
-                    logging.debug(f'Redis publish >> {PstrMsg}')
-                    await self._redis.publish(f'shioaji.indexs.tick.{Item["code"]}', PstrMsg)
-                if hasattr(self,"_mqttClient"):
-                    logging.debug(f'Mqtt publish >> {PstrMsg}')
-                    mqtttopic = f'Shioaji/v0/indexs/tick/{Item["code"]}'
-                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
-            logging.debug(f'SubscribeIndexsTickWorker<< {Item}')
-            counter += 1
-            self._subscribeIndexsTickQueue.task_done()
+                if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                    PstrMsg = orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    if hasattr(self,"_redis"):
+                        logging.debug(f'Redis publish >> {PstrMsg}')
+                        await self._redis.publish(f'shioaji.indexs.tick.{Item["code"]}', PstrMsg)
+                    if hasattr(self,"_mqttClient"):
+                        logging.debug(f'Mqtt publish >> {PstrMsg}')
+                        mqtttopic = f'Shioaji/v0/indexs/tick/{Item["code"]}'
+                        self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+                logging.debug(f'SubscribeIndexsTickWorker<< {Item}')
+                counter += 1
+        except (Exception,asyncio.CancelledError, KeyboardInterrupt):
+            logging.info(f'{name}'+' Cancelled task')
 
-    async def SubscribeStocksTickWorker(self,name):
+    async def SubscribeStocksTickWorker(self,name,executor: concurrent.futures.Executor):
         counter = 0
         logging.info(f'{name} start!')
-        while True:
-            Item = await self._subscribeStocksTickQueue.get()
-            if len(self._subscribeClientS)>0:
-                ret = {"type":"StocksTickEvent","ret":Item}
-                strMsg =orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                websockets.broadcast(self._subscribeClientS, strMsg)
+        loop = asyncio.get_running_loop()
+        try:
+            while True:
+                Item = await loop.run_in_executor(executor, self._GetEventSQueue, self._subscribeStocksTickQueue)
+                if len(self._subscribeClientS)>0:
+                    ret = {"type":"StocksTickEvent","ret":Item}
+                    strMsg =orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    websockets.broadcast(self._subscribeClientS, strMsg)
 
-            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                if hasattr(self,"_redis"):
-                    logging.debug(f'Redis publish >> {PstrMsg}')
-                    await self._redis.publish(f'shioaji.stocks.tick.{Item["code"]}', PstrMsg)
-                if hasattr(self,"_mqttClient"):
-                    logging.debug(f'Mqtt publish >> {PstrMsg}')
-                    mqtttopic = f'Shioaji/v1/stocks/tick/{Item["code"]}'
-                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
-            logging.debug(f'SubscribeStocksTickWorker<< {Item}')
-            counter += 1
-            self._subscribeStocksTickQueue.task_done()
+                if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                    PstrMsg = orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    if hasattr(self,"_redis"):
+                        logging.debug(f'Redis publish >> {PstrMsg}')
+                        await self._redis.publish(f'shioaji.stocks.tick.{Item["code"]}', PstrMsg)
+                    if hasattr(self,"_mqttClient"):
+                        logging.debug(f'Mqtt publish >> {PstrMsg}')
+                        mqtttopic = f'Shioaji/v1/stocks/tick/{Item["code"]}'
+                        self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+                logging.debug(f'SubscribeStocksTickWorker<< {Item}')
+                counter += 1
+        except (Exception,asyncio.CancelledError, KeyboardInterrupt):
+            logging.info(f'{name}'+' Cancelled task')
 
     async def SubscribeFuturesTickWorker(self,name):
         counter = 0
@@ -342,47 +378,47 @@ class WebsocketsHandler():
     async def cmdGetAccount(self,wsclient):
         # {"cmd":"GetAccount"}
         cmd =  {"cmd":"GetAccount","wsclient":wsclient}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)        
 
     async def cmdGetStockAccount(self,wsclient):
         # {"cmd":"GetStockAccount"}
         cmd =  {"cmd":"GetStockAccount","wsclient":wsclient}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdGetFutoptAccount(self,wsclient):
         # {"cmd":"GetFutoptAccount"}
         cmd =  {"cmd":"GetFutoptAccount","wsclient":wsclient}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdGetAccountList(self,wsclient):
         # {"cmd":"GetAccountList"}
         cmd =  {"cmd":"GetAccountList","wsclient":wsclient}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdGetMargin(self,wsclient):
         # {"cmd":"GetMargin"}
         cmd =  {"cmd":"GetMargin","wsclient":wsclient}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
     
     async def cmdGetListFuturePositions(self,wsclient):
         # {"cmd":"GetListFuturePositions"}
         cmd =  {"cmd":"GetListFuturePositions","wsclient":wsclient}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdGetListPositions(self,wsclient):
         # {"cmd":"GetListPositions"}
         cmd =  {"cmd":"GetListPositions","wsclient":wsclient}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdGetListFutureProfitLoss(self,wsclient):
         # {"cmd":"GetListFutureProfitLoss"}
         cmd =  {"cmd":"GetListFutureProfitLoss","wsclient":wsclient}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdGetListProfitLoss(self,wsclient):
         # {"cmd":"GetListProfitLoss"}
         cmd =  {"cmd":"GetListProfitLoss","wsclient":wsclient}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdGetListFutureProfitLossDetail(self,wsclient,**keyword_params):
         # {"cmd":"GetListFutureProfitLossDetail","params":{"detail_id":2}}
@@ -391,7 +427,7 @@ class WebsocketsHandler():
             await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
         else:
             cmd =  {"cmd":"GetListFutureProfitLossDetail","wsclient":wsclient,"params":{"order_id":keyword_params["detail_id"]}}
-            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+            self._SetSimpleQueue(self._cmdQueue, cmd)
         
     async def cmdGetListProfitLossDetail(self,wsclient,**keyword_params):
         # {"cmd":"GetListProfitLossDetail","params":{"detail_id":2}}
@@ -400,32 +436,32 @@ class WebsocketsHandler():
             await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
         else:
             cmd =  {"cmd":"GetListProfitLossDetail","wsclient":wsclient,"params":{"order_id":keyword_params["detail_id"]}}
-            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+            self._SetSimpleQueue(self._cmdQueue, cmd)
     
     async def cmdGetListFutureProfitLossSum(self,wsclient,**keyword_params):
         # {"cmd":"GetListFutureProfitLossSum"}
         # {"cmd":"GetListFutureProfitLossSum","params":{"begin_date":"2022-10-05","end_date":"2022-10-07"}}
         if ("begin_date" in keyword_params) and ("end_date" in keyword_params):
             cmd =  {"cmd":"GetListFutureProfitLossSum","wsclient":wsclient,"params":{"begin_date":keyword_params["begin_date"],"end_date":keyword_params["end_date"]}}
-            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+            self._SetSimpleQueue(self._cmdQueue, cmd)
         else:
             cmd =  {"cmd":"GetListFutureProfitLossSum","wsclient":wsclient}
-            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+            self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdGetListProfitLossSum(self,wsclient,**keyword_params):
         # {"cmd":"GetListProfitLossSum"}
         # {"cmd":"GetListProfitLossSum","params":{"begin_date":"2022-10-05","end_date":"2022-10-07"}}
         if ("begin_date" in keyword_params) and ("end_date" in keyword_params):
             cmd =  {"cmd":"GetListProfitLossDetail","wsclient":wsclient,"params":{"begin_date":keyword_params["begin_date"],"end_date":keyword_params["end_date"]}}
-            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+            self._SetSimpleQueue(self._cmdQueue, cmd)
         else:
             cmd =  {"cmd":"GetListProfitLossSum","wsclient":wsclient}
-            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+            self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdGetSettlements(self,wsclient):
         # {"cmd":"GetSettlements"}
         cmd =  {"cmd":"GetSettlements","wsclient":wsclient}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdLogout(self,wsclient):
         # {"cmd":"Logout"}
@@ -435,7 +471,7 @@ class WebsocketsHandler():
     async def cmdGetOrderList(self,wsclient):
         # {"cmd":"GetOrderList"}
         cmd =  {"cmd":"GetOrderList","wsclient":wsclient}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdUpdateOrderById(self,wsclient,**keyword_params):
         # {"cmd":"UpdateOrderById","params":{"id":"d12b7777","price":17880.0}}
@@ -446,7 +482,7 @@ class WebsocketsHandler():
             keyword_params["order_id"] = keyword_params["id"]
             del keyword_params["id"]
             cmd =  {"cmd":"UpdateOrderById","wsclient":wsclient,"params":{**keyword_params}}
-            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+            self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdCancelOrderById(self,wsclient,**keyword_params):
         # {"cmd":"CancelOrderById","params":{"id":"d12b7777"}}
@@ -455,7 +491,7 @@ class WebsocketsHandler():
             await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
         else:
             cmd =  {"cmd":"CancelOrderById","wsclient":wsclient,"params":{"order_id":keyword_params["id"]}}
-            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+            self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdGetOrderById(self,wsclient,**keyword_params):
         # {"cmd":"GetOrderById","params":{"id":"d12b7777"}}
@@ -464,17 +500,17 @@ class WebsocketsHandler():
             await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
         else:
             cmd =  {"cmd":"GetOrderById","wsclient":wsclient,"params":{"order_id":keyword_params["id"]}}
-            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+            self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdOrderStocks(self,wsclient,**keyword_params):
         # {"cmd":"OrderStocks","params":{"code":"2610","price":25.0,"quantity":1,"action":"Buy","price_type":"LMT","order_cond":"Cash","order_type":"ROD","order_lot":"Common"}}
         cmd =  {"cmd":"OrderStocks","wsclient":wsclient,"params":{**keyword_params}}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdOrderFutures(self,wsclient,**keyword_params):
         # {"cmd":"OrderFutures","params":{"code":"MXFL1","price":17767.0,"quantity":1,"action":"Buy","price_type":"LMT","order_type":"ROD","octype":"Auto"}}
         cmd =  {"cmd":"OrderFutures","wsclient":wsclient,"params":{**keyword_params}}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdActivateCa(self,wsclient,**keyword_params):
         # {"cmd":"ActivateCa","params":{"ActivateCa":"BASE64srtring" ,"CaPasswd":"password","PersonId":"PersonId" }}
@@ -515,14 +551,14 @@ class WebsocketsHandler():
         ret = {"type": "response", "cmd": f'SubscribeIndexs', "ret": self._callers.SubscribeIndexs(**keyword_params)}
         await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
 
-    async def cmdGetScanners(slef,wsclient,**keyword_params):
+    async def cmdGetScanners(self,wsclient,**keyword_params):
         # {"cmd":"GetScanners","params":{"scanner_type":"ChangePercentRank"}}
         # {"cmd":"GetScanners","params":{"scanner_type":"ChangePriceRank"}}
         # {"cmd":"GetScanners","params":{"scanner_type":"DayRangeRank"}}
         # {"cmd":"GetScanners","params":{"scanner_type":"VolumeRank"}}
         # {"cmd":"GetScanners","params":{"scanner_type":"AmountRank"}}
         cmd =  {"cmd":"GetScanners","wsclient":wsclient,"params":{**keyword_params}}
-        loop.call_soon_threadsafe(slef._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
         
     async def cmdSubscribeStocks(self,wsclient,**keyword_params):
         # {"cmd":"SubscribeStocks","params":{"code":"2330","quote_type":"tick"}}
@@ -535,13 +571,13 @@ class WebsocketsHandler():
         # {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08","query_type":"RangeTime","time_start":"09:00:00","time_end":"09:20:01"}}
         # {"cmd":"GetTicks","params":{"StockCode":"2330","date":"2021-10-08","query_type":"LastCount","last_cnt":10}}
         cmd =  {"cmd":"GetTicks","wsclient":wsclient,"params":{**keyword_params}}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     async def cmdGetKBars(self,wsclient,**keyword_params):
         # {"cmd":"GetKBars","params":{"StockCode":"2330","start":"2021-10-18","end":"2021-10-19"}}
         # {"cmd":"GetKBars","params":{"FutureCode":"TXFJ1","start":"2021-10-18","end":"2021-10-19"}}
         cmd =  {"cmd":"GetBars","wsclient":wsclient,"params":{**keyword_params}}
-        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        self._SetSimpleQueue(self._cmdQueue, cmd)
 
     def checkEmptyMessage(self):
         return (len(self._message) <= 0)
@@ -578,13 +614,30 @@ async def start_server(port=6789):
     try:
         async with websockets.serve(root, "", port):
             await asyncio.Future()
-    except (asyncio.CancelledError, KeyboardInterrupt):
-        print('Cancelled task')
+    except (Exception, asyncio.CancelledError, KeyboardInterrupt):
+        print('Cancelled websockets server task')
         STOP.set()
-        sys.exit(0)
-    except Exception as ex:
-        print('Exception:', ex)
-    return None
+        exit()
+
+async def shutdown(loop, executor, signal=None):
+    if signal:
+        logging.info(f"Received exit signal {signal.name}...")
+        tasks = [t for t in asyncio.all_tasks() if t is not
+             asyncio.current_task()]
+
+        [task.cancel() for task in tasks]
+
+        logging.info(f"Cancelling {len(tasks)} outstanding tasks")
+        
+        logging.info(f"Releasing {len(executor._threads)} threads from executor")
+        for thread in executor._threads:
+            try:
+                thread._tstate_lock.release()
+            except Exception:
+                pass
+        executor.shutdown(wait=False)
+        await asyncio.gather(*tasks, return_exceptions=True)
+        loop.stop()
 
 def __start_wss_server(port:int=6789,callers:Caller=Caller(),pool_size:int=50,debug:int=logging.WARNING,
     with_redis:bool=False,redisHost:str=None,redisPort:int=6379,redisDb:str="0",
@@ -594,34 +647,33 @@ def __start_wss_server(port:int=6789,callers:Caller=Caller(),pool_size:int=50,de
         WebsocketsHandler.SetRedisConnection(redisHost,redisPort,redisDb)
     logger = logging.getLogger()
     logger.setLevel(debug)
+    loop = asyncio.get_event_loop()
     if debug == logging.DEBUG:
         loop.set_debug(True)
     task = None
-    try:
-        if with_mqtt:
-            loop.create_task(WebsocketsHandler.SetMqttConnection(mqttHost,mqttUser,mqttPassword))
-        loop.create_task(WebsocketsHandler.EnevtWorker('EnevtWorker-1'))
-        loop.create_task(WebsocketsHandler.OrderWorker('OrderWorker-1'))
-        loop.create_task(WebsocketsHandler.TradeWorker('TradeWorker-1'))
-        loop.create_task(WebsocketsHandler.CmdWorker('CmdWorker-1'))
-        loop.create_task(WebsocketsHandler.SubscribeIndexsTickWorker('SubscribeIndexsTickWorker-1'))
-        loop.create_task(WebsocketsHandler.SubscribeIndexsTickWorker('SubscribeIndexsTickWorker-2'))
+    signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=pool_size+10)
+    for s in signals:
+        loop.add_signal_handler(
+            s, lambda s=s: asyncio.create_task(shutdown(loop, executor, signal=s)))
 
-        for i in range(pool_size):
-            loop.create_task(WebsocketsHandler.SubscribeStocksTickWorker(f'SubscribeStocksTickWorker-{i}'))
-            loop.create_task(WebsocketsHandler.SubscribeFuturesTickWorker(f'SubscribeFuturesTickWorker-{i}'))
-            loop.create_task(WebsocketsHandler.SubscribeStocksBidaskWorker(f'SubscribeStocksBidaskWorker-{i}'))
-            loop.create_task(WebsocketsHandler.SubscribeFuturesBidaskWorker(f'SubscribeFuturesBidaskWorker-{i}'))
+    if with_mqtt:
+        loop.create_task(WebsocketsHandler.SetMqttConnection(mqttHost,mqttUser,mqttPassword))
+    loop.create_task(WebsocketsHandler.EnevtWorker('EnevtWorker-1',executor))
+    loop.create_task(WebsocketsHandler.OrderWorker('OrderWorker-1',executor))
+    loop.create_task(WebsocketsHandler.TradeWorker('TradeWorker-1',executor))
+    loop.create_task(WebsocketsHandler.CmdWorker('CmdWorker-1',executor))
+    loop.create_task(WebsocketsHandler.SubscribeIndexsTickWorker('SubscribeIndexsTickWorker-1',executor))
+    loop.create_task(WebsocketsHandler.SubscribeIndexsTickWorker('SubscribeIndexsTickWorker-2',executor))
 
-        task = asyncio.ensure_future(start_server(port))
-        loop.run_until_complete(task)
-    except KeyboardInterrupt:
-        print('Interrupted, cancelling tasks')
-        task.cancel()
-        loop.run_forever()
-        task.exception()
-    finally:
-        loop.close()
+    for i in range(pool_size):
+        loop.create_task(WebsocketsHandler.SubscribeStocksTickWorker(f'SubscribeStocksTickWorker-{i}',executor))
+        loop.create_task(WebsocketsHandler.SubscribeFuturesTickWorker(f'SubscribeFuturesTickWorker-{i}'))
+        loop.create_task(WebsocketsHandler.SubscribeStocksBidaskWorker(f'SubscribeStocksBidaskWorker-{i}'))
+        loop.create_task(WebsocketsHandler.SubscribeFuturesBidaskWorker(f'SubscribeFuturesBidaskWorker-{i}'))
+
+    task = asyncio.ensure_future(start_server(port))
+    loop.run_until_complete(task)
 
 if __name__ == "__main__":
     __start_wss_server()
