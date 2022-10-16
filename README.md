@@ -61,18 +61,37 @@ Shioaji Warp Caller P.O.C project.
             * 指令範例： {"cmd":"GetScanners","params":{"scanner_type":"DayRangeRank"}}
             * 指令範例： {"cmd":"GetScanners","params":{"scanner_type":"VolumeRank"}}
             * 指令範例： {"cmd":"GetScanners","params":{"scanner_type":"AmountRank"}}
-        * 取得Account & Portfolio(官方表示日後可能移除)
+        * 取得Account & Portfolio
             * 取得Account
                 * 全部帳戶指令範例： {"cmd":"GetAccountList"}
                 * 股票帳戶指令範例： {"cmd":"GetStockAccount"}
                 * 期貨帳戶指令範例： {"cmd":"GetFutoptAccount"}
             * 取得期貨帳戶Margin資料
-                * 指令範例： {"cmd":"GetAccountMarginData"}
-            * 取得期貨帳戶Open Position資料
-                * 指令範例： {"cmd":"GetAccountOpenpositionData"}
-            * 取得期貨帳戶SettleProfitLoss資料
-                * 指令範例： {"cmd":"GetAccountSettleProfitlossData"}
-                * 指令範例： {"cmd":"GetAccountSettleProfitlossData","params":{"start_date":"20210801"}}
+                * 指令範例： {"cmd":"GetMargin"}
+            * 取得帳戶Position資料
+                * 股票
+                    * 指令範例： {"cmd":"GetListPositions"}
+                * 期貨
+                    * 指令範例： {"cmd":"GetListFuturePositions"}
+            * 取得帳戶ProfitLoss資料
+                * 股票
+                    * 指令範例： {"cmd":"GetListProfitLoss"}
+                * 期貨
+                    * 指令範例： {"cmd":"GetListFutureProfitLoss"}
+            * 取得帳戶ProfitLoss資料
+                * 股票
+                    * 指令範例： {"cmd":"GetListProfitLossDetail","params":{"detail_id":2}}
+                * 期貨
+                    * 指令範例： {"cmd":"GetListFutureProfitLossDetail","params":{"detail_id":2}}
+            * 取得帳戶ProfitLossSum資料
+                * 股票
+                    * 指令範例： {"cmd":"GetListProfitLossSum"}
+                    * 指令範例： {"cmd":"GetListProfitLossSum","params":{"begin_date":"2022-10-05","end_date":"2022-10-07"}}
+                * 期貨
+                    * 指令範例： {"cmd":"GetListFutureProfitLossSum"}
+                    * 指令範例： {"cmd":"GetListFutureProfitLossSum","params":{"begin_date":"2022-10-05","end_date":"2022-10-07"}}
+            * 取得股票帳戶交割Settlements資料
+                * 指令範例： {"cmd":"GetSettlements"}
         * 下單Order
             * 套用憑證Apply & Activate CA
                 * 請用base64 讀取你的憑證。
