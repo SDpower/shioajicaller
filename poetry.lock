@@ -21,9 +21,6 @@ category = "main"
 optional = false
 python-versions = ">=3.6"
 
-[package.dependencies]
-typing-extensions = {version = ">=3.6.5", markers = "python_version < \"3.8\""}
-
 [[package]]
 name = "certifi"
 version = "2022.9.24"
@@ -121,7 +118,6 @@ optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
-typing-extensions = {version = ">=3.6.4", markers = "python_version < \"3.8\""}
 zipp = ">=0.5"
 
 [package.extras]
@@ -369,8 +365,8 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 
 [metadata]
 lock-version = "1.1"
-python-versions = "^3.7"
-content-hash = "c1ab110961ce00c84d08ca271674b481eeda1e69fc5bc6d51084798c19c13c5e"
+python-versions = "^3.8"
+content-hash = "e05a87223a9894d55c2693d34d8f199b36abfdb1e6432eecf70f4941ebac2f43"
 
 [metadata.files]
 aioredis = [
