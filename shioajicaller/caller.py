@@ -125,6 +125,83 @@ class Caller(object):
             return account_settle_profitloss.data()
         return False
 
+    # future account
+    def GetMargin(self,timeout: int = 5000):
+        if (self._check_connect()):
+            future_account = self._api.futopt_account
+            if future_account != None:
+                return self._api.margin(account=future_account, timeout=timeout)
+            return False
+        return False
+
+    def GetListFuturePositions(self,timeout: int = 5000):
+        if (self._check_connect()):
+            future_account = self._api.futopt_account
+            if future_account == None:
+                return False
+            return self.GetListPositions(account = future_account ,timeout = timeout)
+        return False
+
+    # Default: stock account
+    def GetListPositions(self,account: sj.account = None ,timeout: int = 5000):
+        if (self._check_connect()):
+            return self._api.list_positions(account=account, timeout=timeout)
+        return False
+
+    def GetListFutureProfitLoss(self,timeout: int = 5000):
+        if (self._check_connect()):            
+            future_account = self._api.futopt_account
+            if future_account == None:
+                return False
+            return self.GetListProfitLoss(account=future_account ,timeout = timeout)
+        return False
+        
+    # Default date range is today.
+    # Default: stock account
+    def GetListProfitLoss(self,account: sj.account = None,begin_date: str = '',end_date: str = '',timeout: int = 5000):        
+        if (self._check_connect()):
+            return self._api.list_profit_loss(account=account ,begin_date=begin_date ,end_date=end_date ,timeout=timeout)
+        return False
+
+    def GetListFutureProfitLossDetail(self,detail_id: int = 0,timeout: int = 5000):
+        if (self._check_connect()):            
+            if detail_id == 0:
+                return False
+            future_account = self._api.futopt_account
+            if future_account == None:
+                return False
+            return self.GetListProfitLossDetail(account=future_account ,detail_id=detail_id ,timeout = timeout)
+        return False
+
+    # Default date range is today.
+    # Default: stock account
+    def GetListProfitLossDetail(self,account: sj.account = None,detail_id: int = 0,timeout: int = 5000):
+        if (self._check_connect()):
+            if detail_id == 0:
+                return False
+            return self._api.list_profit_loss_detail(account=account ,detail_id=detail_id ,timeout=timeout)
+        return False
+
+    def GetListFutureProfitLossSum(self,begin_date: str = '',end_date: str = '',timeout: int = 5000):
+        if (self._check_connect()):            
+            future_account = self._api.futopt_account
+            if future_account == None:
+                return False
+            return self.GetListProfitLossSum(account=future_account ,begin_date=begin_date ,end_date=end_date ,timeout = timeout)
+        return False
+
+    # Default date range is today.
+    # Default: stock account
+    def GetListProfitLossSum(self,account: sj.account = None,begin_date: str = '',end_date: str = '',timeout: int = 5000):
+        if (self._check_connect()):
+            return self._api.list_profit_loss_sum(account=account ,begin_date=begin_date ,end_date=end_date ,timeout=timeout)
+        return False
+
+    def GetSettlements(self,timeout: int = 5000):
+        if (self._check_connect()):
+            return self._api.settlements(timeout=timeout)
+        return False
+
     def Login(self):
         if self._userPassowrd == None or self._userPassowrd == "" or self._userID == None or self._userID == "":
             logging.error("Error!! No UserId or UserPassowrd.")

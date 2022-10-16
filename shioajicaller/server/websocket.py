@@ -119,8 +119,7 @@ class WebsocketsHandler():
                     ret["ret"] = getattr(self._callers, f'{Item["cmd"]}', lambda: CmdDefault)()
             except AttributeError:
                 pass
-
-            await websocket.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
+            await websocket.send(orjson.dumps(ret, default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC).decode())            
             counter += 1
             self._cmdQueue.task_done()
 
@@ -358,6 +357,74 @@ class WebsocketsHandler():
     async def cmdGetAccountList(self,wsclient):
         # {"cmd":"GetAccountList"}
         cmd =  {"cmd":"GetAccountList","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetMargin(self,wsclient):
+        # {"cmd":"GetMargin"}
+        cmd =  {"cmd":"GetMargin","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+    
+    async def cmdGetListFuturePositions(self,wsclient):
+        # {"cmd":"GetListFuturePositions"}
+        cmd =  {"cmd":"GetListFuturePositions","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetListPositions(self,wsclient):
+        # {"cmd":"GetListPositions"}
+        cmd =  {"cmd":"GetListPositions","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetListFutureProfitLoss(self,wsclient):
+        # {"cmd":"GetListFutureProfitLoss"}
+        cmd =  {"cmd":"GetListFutureProfitLoss","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetListProfitLoss(self,wsclient):
+        # {"cmd":"GetListProfitLoss"}
+        cmd =  {"cmd":"GetListProfitLoss","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetListFutureProfitLossDetail(self,wsclient,**keyword_params):
+        # {"cmd":"GetListFutureProfitLossDetail","params":{"detail_id":2}}
+        if "detail_id" not in keyword_params:
+            ret = {"type": "response","cmd": f'GetListFutureProfitLossDetail' , "ret": False}
+            await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
+        else:
+            cmd =  {"cmd":"GetListFutureProfitLossDetail","wsclient":wsclient,"params":{"order_id":keyword_params["detail_id"]}}
+            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        
+    async def cmdGetListProfitLossDetail(self,wsclient,**keyword_params):
+        # {"cmd":"GetListProfitLossDetail","params":{"detail_id":2}}
+        if "detail_id" not in keyword_params:
+            ret = {"type": "response","cmd": f'GetListFutureProfitLossDetail' , "ret": False}
+            await wsclient.send(orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode())
+        else:
+            cmd =  {"cmd":"GetListProfitLossDetail","wsclient":wsclient,"params":{"order_id":keyword_params["detail_id"]}}
+            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+    
+    async def cmdGetListFutureProfitLossSum(self,wsclient,**keyword_params):
+        # {"cmd":"GetListFutureProfitLossSum"}
+        # {"cmd":"GetListFutureProfitLossSum","params":{"begin_date":"2022-10-05","end_date":"2022-10-07"}}
+        if ("begin_date" in keyword_params) and ("end_date" in keyword_params):
+            cmd =  {"cmd":"GetListFutureProfitLossSum","wsclient":wsclient,"params":{"begin_date":keyword_params["begin_date"],"end_date":keyword_params["end_date"]}}
+            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        else:
+            cmd =  {"cmd":"GetListFutureProfitLossSum","wsclient":wsclient}
+            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetListProfitLossSum(self,wsclient,**keyword_params):
+        # {"cmd":"GetListProfitLossSum"}
+        # {"cmd":"GetListProfitLossSum","params":{"begin_date":"2022-10-05","end_date":"2022-10-07"}}
+        if ("begin_date" in keyword_params) and ("end_date" in keyword_params):
+            cmd =  {"cmd":"GetListProfitLossDetail","wsclient":wsclient,"params":{"begin_date":keyword_params["begin_date"],"end_date":keyword_params["end_date"]}}
+            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+        else:
+            cmd =  {"cmd":"GetListProfitLossSum","wsclient":wsclient}
+            loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
+    async def cmdGetSettlements(self,wsclient):
+        # {"cmd":"GetSettlements"}
+        cmd =  {"cmd":"GetSettlements","wsclient":wsclient}
         loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
 
     async def cmdGetAccountMarginData(self,wsclient):
