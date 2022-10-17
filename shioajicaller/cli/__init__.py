@@ -118,7 +118,11 @@ def websockets():
         callers.SetAccount(userId= args.user_id ,userPassowrd= args.user_password)
         __start_wss_server(port=wsport, callers=callers, pool_size=args.pool_size, debug=debug, **args_more)
     else:
-        __start_wss_server(port=wsport, pool_size=args.pool_size, debug=debug, **args_more)
+        if config.userId != None and config.userPassowrd != None:
+            __start_wss_server(port=wsport, pool_size=args.pool_size, debug=debug, **args_more)
+        else:
+            print("Error userId and userPassowrd not found!")
+            sys.exit()
 
 
 def run():
