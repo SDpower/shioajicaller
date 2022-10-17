@@ -141,7 +141,7 @@ Shioaji Warp Caller P.O.C project.
 
 ## 安裝使用
 ### 使用pip安裝
-
+** 請確認 python 版本 3.8 之上 **
 ### linux windows
 ```
 $ pip install shioajicaller
