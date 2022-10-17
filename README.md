@@ -139,9 +139,7 @@ Shioaji Warp Caller P.O.C project.
             * {"type":"TradeEvent"..........
 
 ## 安裝使用
-  **目前已知Windows，不支援套件uvloop請用Docker方式執行。**
 ### 使用pip安裝
- 目前已知Windows 不支援套件uvloop。
 ```
 $ pip install shioajicaller
 $ shioajicaller -h
