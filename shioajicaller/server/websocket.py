@@ -9,7 +9,20 @@ import websockets
 from gmqtt import Client as MQTTClient
 import uvloop
 from ..caller import Caller
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s %(levelname)s %(thread)d %(message)s",
+)
+
+if os.name == 'posix':
+    try:
+        import uvloop
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        print('uvloop enable')
+    except Exception:
+        print('uvloop disabled')
+
 
 STOP = asyncio.Event()
 ClientS = set()
