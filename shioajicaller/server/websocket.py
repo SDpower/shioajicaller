@@ -2,7 +2,7 @@
 import asyncio
 import concurrent.futures
 import aioredis
-import os, sys, base64, signal
+import os, base64, signal
 import logging
 import queue
 import orjson
@@ -20,8 +20,9 @@ if os.name == 'posix':
     try:
         import uvloop
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        print('uvloop enable')
     except Exception:
-        pass
+        print('uvloop disabled')
 
 
 STOP = asyncio.Event()

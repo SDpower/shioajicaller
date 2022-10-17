@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "shioajicaller"
-version = "0.3.0.0"
+version = "0.3.0.1"
 description = "shioaj warp caller"
 authors = ["Steve Lo <info@sd.idv.tw>"]
 license = "MIT"
@@ -11,10 +11,10 @@ shioaji = "^0.3.6.dev5"
 python-dotenv = "^0.19.0"
 redis = "^3.5.3"
 websockets = "^10.0"
-uvloop = "^0.16.0"
 aioredis = "2.0.0"
 gmqtt = "^0.6.10"
 orjson = "^3.8.0"
+uvloop = {version = "^0.17.0", platform = "linux"}
 
 [tool.poetry.dev-dependencies]
 
