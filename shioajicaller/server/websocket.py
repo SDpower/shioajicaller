@@ -5,7 +5,6 @@ import aioredis
 import os, sys, base64, signal
 import logging
 import queue
-import threading as td
 import orjson
 import time
 import websockets
@@ -38,9 +37,9 @@ class WebsocketsHandler():
         self._tradeQueue = queue.SimpleQueue()
         self._subscribeIndexsTickQueue = queue.SimpleQueue()
         self._subscribeStocksTickQueue = queue.SimpleQueue()
-        self._subscribeFuturesTickQueue = asyncio.Queue()
-        self._subscribeStocksBidaskQueue = asyncio.Queue()
-        self._subscribeFuturesBidaskQueue = asyncio.Queue()
+        self._subscribeFuturesTickQueue = queue.SimpleQueue()
+        self._subscribeStocksBidaskQueue = queue.SimpleQueue()
+        self._subscribeFuturesBidaskQueue = queue.SimpleQueue()
         self._subscribeClientS = set()
 
         self._callers.SetEnevtCallBack(self.EnevtCallBack)
@@ -106,13 +105,13 @@ class WebsocketsHandler():
         self._SetSimpleQueue(self._subscribeStocksTickQueue, item)
 
     def SubscribeFuturesTickCallBack(self,item):
-        loop.call_soon_threadsafe(self._subscribeFuturesTickQueue.put_nowait, item)
+        self._SetSimpleQueue(self._subscribeFuturesTickQueue, item)
 
     def SubscribeStocksBidaskCallBack(self,item):
-        loop.call_soon_threadsafe(self._subscribeStocksBidaskQueue.put_nowait, item)
+        self._SetSimpleQueue(self._subscribeStocksBidaskQueue, item)
 
     def SubscribeFuturesBidaskCallBack(self,item):
-        loop.call_soon_threadsafe(self._subscribeFuturesBidaskQueue.put_nowait, item)
+        self._SetSimpleQueue(self._subscribeFuturesBidaskQueue, item)
 
     async def CmdWorker(self,name,executor: concurrent.futures.Executor):
         counter = 0
@@ -216,50 +215,56 @@ class WebsocketsHandler():
         except (Exception,asyncio.CancelledError, KeyboardInterrupt):
             logging.info(f'{name}'+' Cancelled task')            
 
-    async def SubscribeStocksBidaskWorker(self,name):
+    async def SubscribeStocksBidaskWorker(self,name,executor: concurrent.futures.Executor):
         counter = 0
         logging.info(f'{name} start!')
-        while True:
-            Item = await self._subscribeStocksBidaskQueue.get()
-            if len(self._subscribeClientS)>0:
-                ret = {"type":"StocksBidaskEvent","ret":Item}
-                strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                websockets.broadcast(self._subscribeClientS, strMsg)
+        loop = asyncio.get_running_loop()
+        try:
+            while True:
+                Item = await loop.run_in_executor(executor, self._GetEventSQueue, self._subscribeStocksBidaskQueue)
+                if len(self._subscribeClientS)>0:
+                    ret = {"type":"StocksBidaskEvent","ret":Item}
+                    strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    websockets.broadcast(self._subscribeClientS, strMsg)
 
-            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                if hasattr(self,"_redis"):
-                    logging.debug(f'Redis publish >> {PstrMsg}')
-                    await self._redis.publish(f'shioaji.stocks.bidask.{Item["code"]}', PstrMsg)
-                if hasattr(self,"_mqttClient"):
-                    logging.debug(f'Mqtt publish >> {PstrMsg}')
-                    mqtttopic = f'Shioaji/v1/stocks/bidask/{Item["code"]}'
-                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
-            logging.debug(f'SubscribeStocksBidaskWorker<< {Item}')
-            counter += 1
-            self._subscribeStocksBidaskQueue.task_done()
+                if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                    PstrMsg = orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    if hasattr(self,"_redis"):
+                        logging.debug(f'Redis publish >> {PstrMsg}')
+                        await self._redis.publish(f'shioaji.stocks.bidask.{Item["code"]}', PstrMsg)
+                    if hasattr(self,"_mqttClient"):
+                        logging.debug(f'Mqtt publish >> {PstrMsg}')
+                        mqtttopic = f'Shioaji/v1/stocks/bidask/{Item["code"]}'
+                        self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+                logging.debug(f'SubscribeStocksBidaskWorker<< {Item}')
+                counter += 1
+        except (Exception,asyncio.CancelledError, KeyboardInterrupt):
+            logging.info(f'{name}'+' Cancelled task')
 
-    async def SubscribeFuturesBidaskWorker(self,name):
+    async def SubscribeFuturesBidaskWorker(self,name,executor: concurrent.futures.Executor):
         counter = 0
         logging.info(f'{name} start!')
-        while True:
-            Item = await self._subscribeFuturesBidaskQueue.get()
-            if len(self._subscribeClientS)>0:
-                ret = {"type":"FuturesBidaskEvent","ret":Item}
-                strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                websockets.broadcast(self._subscribeClientS, strMsg)
-            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg = orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                if hasattr(self,"_redis"):
-                    logging.debug(f'Redis publish >> {PstrMsg}')
-                    await self._redis.publish(f'shioaji.futures.bidask.{Item["code"]}', PstrMsg)
-                if hasattr(self,"_mqttClient"):
-                    logging.debug(f'Mqtt publish >> {PstrMsg}')
-                    mqtttopic = f'Shioaji/v1/futures/bidask/{Item["code"]}'
-                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
-            logging.debug(f'SubscribeFuturesBidaskWorker<< {Item}')
-            counter += 1
-            self._subscribeFuturesBidaskQueue.task_done()
+        loop = asyncio.get_running_loop()
+        try:
+            while True:
+                Item = await loop.run_in_executor(executor, self._GetEventSQueue, self._subscribeFuturesBidaskQueue)
+                if len(self._subscribeClientS)>0:
+                    ret = {"type":"FuturesBidaskEvent","ret":Item}
+                    strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    websockets.broadcast(self._subscribeClientS, strMsg)
+                if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                    PstrMsg = orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    if hasattr(self,"_redis"):
+                        logging.debug(f'Redis publish >> {PstrMsg}')
+                        await self._redis.publish(f'shioaji.futures.bidask.{Item["code"]}', PstrMsg)
+                    if hasattr(self,"_mqttClient"):
+                        logging.debug(f'Mqtt publish >> {PstrMsg}')
+                        mqtttopic = f'Shioaji/v1/futures/bidask/{Item["code"]}'
+                        self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+                logging.debug(f'SubscribeFuturesBidaskWorker<< {Item}')
+                counter += 1
+        except (Exception,asyncio.CancelledError, KeyboardInterrupt):
+            logging.info(f'{name}'+' Cancelled task')
 
     async def SubscribeIndexsTickWorker(self,name,executor: concurrent.futures.Executor):
         counter = 0
@@ -313,27 +318,30 @@ class WebsocketsHandler():
         except (Exception,asyncio.CancelledError, KeyboardInterrupt):
             logging.info(f'{name}'+' Cancelled task')
 
-    async def SubscribeFuturesTickWorker(self,name):
+    async def SubscribeFuturesTickWorker(self,name,executor: concurrent.futures.Executor):
         counter = 0
         logging.info(f'{name} start!')
-        while True:
-            Item = await self._subscribeFuturesTickQueue.get()
-            if len(self._subscribeClientS)>0:
-                ret = {"type":"FuturesTickEvent","ret":Item}
-                strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                websockets.broadcast(self._subscribeClientS, strMsg)
-            if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
-                PstrMsg =orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
-                if hasattr(self,"_redis"):
-                    logging.debug(f'Redis publish >> {PstrMsg}')
-                    await self._redis.publish(f'shioaji.futures.tick.{Item["code"]}', PstrMsg)
-                if hasattr(self,"_mqttClient"):
-                    logging.debug(f'Mqtt publish >> {PstrMsg}')
-                    mqtttopic = f'Shioaji/v1/futures/tick/{Item["code"]}'
-                    self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
-            logging.debug(f'SubscribeFuturesTickWorker<< {Item}')
-            counter += 1
-            self._subscribeFuturesTickQueue.task_done()
+        loop = asyncio.get_running_loop()
+        try:
+            while True:
+                Item = await loop.run_in_executor(executor, self._GetEventSQueue, self._subscribeFuturesTickQueue)
+                if len(self._subscribeClientS)>0:
+                    ret = {"type":"FuturesTickEvent","ret":Item}
+                    strMsg = orjson.dumps(ret, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    websockets.broadcast(self._subscribeClientS, strMsg)
+                if hasattr(self,"_redis") or hasattr(self,"_mqttClient"):
+                    PstrMsg =orjson.dumps(Item, default=str, option=orjson.OPT_NAIVE_UTC).decode()
+                    if hasattr(self,"_redis"):
+                        logging.debug(f'Redis publish >> {PstrMsg}')
+                        await self._redis.publish(f'shioaji.futures.tick.{Item["code"]}', PstrMsg)
+                    if hasattr(self,"_mqttClient"):
+                        logging.debug(f'Mqtt publish >> {PstrMsg}')
+                        mqtttopic = f'Shioaji/v1/futures/tick/{Item["code"]}'
+                        self._mqttClient.publish(mqtttopic, PstrMsg, qos=1)
+                logging.debug(f'SubscribeFuturesTickWorker<< {Item}')
+                counter += 1
+        except (Exception,asyncio.CancelledError, KeyboardInterrupt):
+            logging.info(f'{name}'+' Cancelled task')
 
     async def run(self,websocket,message):
         self._message = message
@@ -668,9 +676,9 @@ def __start_wss_server(port:int=6789,callers:Caller=Caller(),pool_size:int=50,de
 
     for i in range(pool_size):
         loop.create_task(WebsocketsHandler.SubscribeStocksTickWorker(f'SubscribeStocksTickWorker-{i}',executor))
-        loop.create_task(WebsocketsHandler.SubscribeFuturesTickWorker(f'SubscribeFuturesTickWorker-{i}'))
-        loop.create_task(WebsocketsHandler.SubscribeStocksBidaskWorker(f'SubscribeStocksBidaskWorker-{i}'))
-        loop.create_task(WebsocketsHandler.SubscribeFuturesBidaskWorker(f'SubscribeFuturesBidaskWorker-{i}'))
+        loop.create_task(WebsocketsHandler.SubscribeFuturesTickWorker(f'SubscribeFuturesTickWorker-{i}',executor))
+        loop.create_task(WebsocketsHandler.SubscribeStocksBidaskWorker(f'SubscribeStocksBidaskWorker-{i}',executor))
+        loop.create_task(WebsocketsHandler.SubscribeFuturesBidaskWorker(f'SubscribeFuturesBidaskWorker-{i}',executor))
 
     task = asyncio.ensure_future(start_server(port))
     loop.run_until_complete(task)
