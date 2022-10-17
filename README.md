@@ -7,6 +7,7 @@ Shioaji Warp Caller P.O.C project.
 透過取得Shioaji所擴充的功能：
 * 所有Contracts
     * 輸出檔案
+        * 指數 輸出檔案(`IndexsTWSE.csv`)
         * 股票 輸出檔案(`StockTWSE.csv`)
           * 上市股票
           * 櫃股股票
@@ -139,13 +140,20 @@ Shioaji Warp Caller P.O.C project.
             * {"type":"TradeEvent"..........
 
 ## 安裝使用
-  **目前已知Windows，不支援套件uvloop請用Docker方式執行。**
 ### 使用pip安裝
- 目前已知Windows 不支援套件uvloop。
+** 請確認 python 版本 3.8 之上 **
+### linux windows
 ```
 $ pip install shioajicaller
 $ shioajicaller -h
 ```
+
+### mac osx
+```
+$ pip install shioajicaller uvloop==0.17.0
+$ shioajicaller -h
+```
+
 
 ### 使用Docker
 Docker [https://hub.docker.com/r/sdpower/shioaji_caller](https://hub.docker.com/r/sdpower/shioaji_caller)

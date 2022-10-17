@@ -1,7 +1,14 @@
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv()
+try:
+    load_dotenv(find_dotenv( raise_error_if_not_found = True))
+except Exception:
+    try:
+        load_dotenv(find_dotenv( usecwd= True,raise_error_if_not_found = True))
+    except Exception:
+        pass
+
 userId = os.environ.get('USER_ID')
 userPassowrd = os.environ.get('USER_PASSWORD')
 redisHost = os.environ.get('REDIS_HOST')
