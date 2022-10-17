@@ -1,7 +1,9 @@
 import os
-from dotenv import load_dotenv
+from os.path import join, dirname
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv()
+load_dotenv(find_dotenv())
+
 userId = os.environ.get('USER_ID')
 userPassowrd = os.environ.get('USER_PASSWORD')
 redisHost = os.environ.get('REDIS_HOST')
