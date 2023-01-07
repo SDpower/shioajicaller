@@ -1,4 +1,10 @@
 Shioaji Warp Caller P.O.C project.
+
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/shioajicaller)](https://pypi.org/project/shioajicaller)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/shioajicaller)](https://pypi.org/project/shioajicaller)
+[![PyPI - License](https://img.shields.io/pypi/l/shioajicaller)](https://pypi.org/project/shioajicaller)
+[![Docker Pulls](https://img.shields.io/docker/pulls/sdpower/shioaji_caller)]()
+
 ----------------------------
 # 簡介
 因為Shioaji API只能有五個連線，且有訂閱上限制。 如果你有多個分開程式需要處理，就會佔用重複資源。
