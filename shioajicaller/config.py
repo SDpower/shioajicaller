@@ -9,8 +9,8 @@ except Exception:
     except Exception:
         pass
 
-userId = os.environ.get('USER_ID')
-userPassowrd = os.environ.get('USER_PASSWORD')
+apiKey = os.environ.get('API_KEY')
+secretKey = os.environ.get('SECRET_KEY')
 redisHost = os.environ.get('REDIS_HOST')
 redisPort = os.environ.get('REDIS_PORT')
 redisDb = os.environ.get('REDIS_DB')

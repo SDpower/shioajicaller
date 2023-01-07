@@ -15,15 +15,15 @@ logging.basicConfig(
 def update():
     parser = argparse.ArgumentParser(
         description='Update Code List')
-    parser.add_argument('-u', '--user-id', nargs='+', help='Shioaji USER ID')
-    parser.add_argument('-p', '--user-password', nargs='+' , help='Shioaji USER PASSWORD')
+    parser.add_argument('-api', '--api-key', nargs='+', help='Shioaji API_KEY')
+    parser.add_argument('-secret', '--secret-key', nargs='+' , help='Shioaji SECRET_KEY')
     parser.add_argument('-t', '--type', default='csv', help='output type csv or redis')
     parser.add_argument('-rh', '--redis-host', default='127.0.0.1', help='redis host')
     parser.add_argument('-rp', '--redis-port',type=int, default=6379, help='redis port')
     parser.add_argument('-rdb', '--redis-db',type=int, default=0, help='reis db')
     args = parser.parse_args(sys.argv[2:])
     callers = Caller()
-    callers.SetAccount(args.user_id ,args.user_password)
+    callers.SetAccount(apiKey= args.api_key ,secretKey= args.secret_key)
     if (args.type == 'csv'):
         print('Start to update codes to csv')
         __update_codes(callers)
@@ -50,8 +50,8 @@ def update():
 def websockets():
     parser = argparse.ArgumentParser(
         description='Websockets Server')
-    parser.add_argument('-u', '--user-id', nargs='+', help='Shioaji USER ID')
-    parser.add_argument('-p', '--user-password', nargs='+' , help='Shioaji USER PASSWORD')
+    parser.add_argument('-api', '--api-key', nargs='+', help='Shioaji API_KEY')
+    parser.add_argument('-secret', '--secret-key', nargs='+' , help='Shioaji SECRET_KEY')
     parser.add_argument('-wp', '--websockets-port',type=int, default=6789, help='Websockets port')
     parser.add_argument('-ps', '--pool-size', type=int, default=50, help='pool size')
     parser.add_argument('-wr', '--with-redis', action="store_true", help='with redis publish.')
@@ -113,12 +113,12 @@ def websockets():
         debug = logging.WARNING
 
     print(f'Start Websockets Server Port:{wsport}')
-    if args.user_id != None and args.user_password != None:
+    if args.api_key != None and args.secret_key != None:
         callers = Caller()
-        callers.SetAccount(userId= args.user_id ,userPassowrd= args.user_password)
+        callers.SetAccount(apiKey= args.api_key ,secretKey= args.secret_key)
         __start_wss_server(port=wsport, callers=callers, pool_size=args.pool_size, debug=debug, **args_more)
     else:
-        if config.userId != None and config.userPassowrd != None:
+        if config.apiKey != None and config.secretKey != None:
             __start_wss_server(port=wsport, pool_size=args.pool_size, debug=debug, **args_more)
         else:
             print("Error userId and userPassowrd not found!")
