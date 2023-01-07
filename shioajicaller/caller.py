@@ -8,13 +8,12 @@ from shioaji import TickFOPv1, TickSTKv1, BidAskSTKv1, BidAskFOPv1,Exchange
 
 class Caller(object):
     def __init__(self):
-        self._userID = config.userId
-        self._userPassowrd = config.userPassowrd
+        self._apiKey = config.apiKey
+        self._secretKey = config.secretKey
         self._connected = False
         self._api = sj.Shioaji()
         self._caStatus = False
         logging.info("shioaji version:"+sj.__version__)
-        print("shioaji version:"+sj.__version__)
         self._api.quote.set_event_callback(self._event_callback)
         self._api.quote.set_quote_callback(self.Quote_callback_v0_tick)
         self._api.quote.set_on_tick_stk_v1_callback(self.Quote_callback_stk_v1_tick)
@@ -63,11 +62,11 @@ class Caller(object):
         if callable(callback):
             self.SubscribeFuturesBidaskCallBack= callback
 
-    def SetAccount(self,userId:str="",userPassowrd:str=""):
-        if userId != None and userId !="":
-            self._userID = userId
-        if userPassowrd != None and userPassowrd !="":
-            self._userPassowrd = userPassowrd
+    def SetAccount(self,apiKey:str="",secretKey:str=""):
+        if apiKey != None and apiKey !="":
+            self._apiKey = apiKey
+        if secretKey != None and secretKey !="":
+            self._secretKey = secretKey
 
     def GetStockAccount(self):
         if (self._check_connect()):
@@ -86,43 +85,6 @@ class Caller(object):
     def GetAccount(self):
         if (self._check_connect()):
             return self._accounts
-        return False
-
-    # only for futoptand and option !? https://sinotrade.github.io/tutor/accounting/account_portfolio/
-    # On top has:The features of this page will be removed in the future.
-    def GetAccountMargin(self):
-        if (self._check_connect()):
-            return self._api.get_account_margin()
-        return False
-
-    def GetAccountMarginData(self):
-        account_margin = self.GetAccountMargin()
-        if account_margin:
-            return account_margin.data()
-        return False
-
-    def GetAccountOpenposition(self):
-        if (self._check_connect()):
-            return self._api.get_account_openposition()
-        return False
-
-    def GetAccountOpenpositionData(self):
-        account_openposition = self.GetAccountOpenposition()
-        if account_openposition:
-            return account_openposition.data()
-        return False
-
-    def GetAccountSettleProfitloss(self,start_date:str=""):
-        if (self._check_connect()):
-            if start_date == "":
-                start_date = (date.today() - timedelta(days=30)).strftime('%Y%m%d')
-            return self._api.get_account_settle_profitloss(start_date=start_date)
-        return False
-
-    def GetAccountSettleProfitlossData(self,start_date:str=""):
-        account_settle_profitloss = self.GetAccountSettleProfitloss(start_date)
-        if account_settle_profitloss:
-            return account_settle_profitloss.data()
         return False
 
     # future account
@@ -203,10 +165,10 @@ class Caller(object):
         return False
 
     def Login(self):
-        if self._userPassowrd == None or self._userPassowrd == "" or self._userID == None or self._userID == "":
-            logging.error("Error!! No UserId or UserPassowrd.")
+        if self._apiKey == None or self._apiKey == "" or self._secretKey == None or self._secretKey == "":
+            logging.error("Error!! No apiKey or secretKey.")
             sys.exit(70)
-        self._accounts = self._api.login(self._userID, self._userPassowrd,contracts_cb = self.ContractsDone())
+        self._accounts = self._api.login(self._apiKey, self._secretKey,contracts_cb = self.ContractsDone())
 
     def LogOut(self):
         self._connected = False
@@ -358,7 +320,7 @@ class Caller(object):
         else:
             return False
 
-    def OrderStocks(self,code:str="",price:float=0.0,quantity:int=0,action:str="",price_type:str="",order_type:str="",order_cond:str="",order_lot:str="Common",first_sell:str="false"):
+    def OrderStocks(self,code:str="",price:float=0.0,quantity:int=0,action:str="",price_type:str="",order_type:str="",order_cond:str="",order_lot:str="Common",daytrade_short:str="false",custom_field:str=""):
         """
         Code: Stocks code.
         price: 10.0
@@ -366,9 +328,10 @@ class Caller(object):
         action: {Buy, Sell} (買、賣)
         price_type: {LMT, MKT} (限價、市價)
         order_type: {ROD, IOC, FOK} (當日有效、立即成交否則取消、全部成交否則取消)
-        order_cond: {Cash, MarginTrading, ShortSelling} (現股、融資、融券)
-        order_lot: {Common, Fixing, Odd, IntradayOdd} (整股、定盤、盤後零股、盤中零股)
-        first_sell {str}: {true, false}
+        order_cond: {Cash, Netting, MarginTrading, ShortSelling, Emerging} (現股、餘額交割、融資、融券、興櫃)
+        order_lot: {Common, ,BlockTrade ,Fixing, Odd, IntradayOdd} (整股、鉅額、定盤、盤後零股、盤中零股)
+        daytrade_short {str}: {true, false}
+        custom_field {str}:"" 自定義內容
         """
         if self._check_connect():
             if not self._caStatus:
@@ -387,8 +350,9 @@ class Caller(object):
                 order_type=order_type,
                 order_cond=order_cond,
                 order_lot=order_lot,
-                first_sell=first_sell,
-                account=self._api.stock_account)
+                daytrade_short=daytrade_short,
+                account=self._api.stock_account,
+                custom_field = custom_field)                
             return dict(**self._api.place_order(contract, order, timeout=0,cb=self.Trade_CallBack))
         else:
             return False
@@ -401,7 +365,7 @@ class Caller(object):
         action: {Buy, Sell} (買、賣)
         price_type: {LMT, MKT, MKP} (限價、市價、範圍市價)
         order_type: {ROD, IOC, FOK} (當日有效、立即成交否則取消、全部成交否則取消)
-        octype: {Auto, NewPosition, Cover, DayTrade} (自動、新倉、平倉、當沖)
+        octype: {Auto, New, Cover, DayTrade} (自動、新倉、平倉、當沖)
         """
         if self._check_connect():
             if not self._caStatus:

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "shioajicaller"
-version = "1.0.0.0"
+version = "0.4.0.0"
 description = "shioaj warp caller"
 authors = ["Steve Lo <info@sd.idv.tw>"]
 license = "MIT"
