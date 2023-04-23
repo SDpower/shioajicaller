@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import asyncio
-import aioredis
+import redis.asyncio as redis
 import os, sys, base64
 import logging
 import orjson
@@ -81,16 +81,10 @@ class WebsocketsHandler():
         await STOP.wait()
         await self._mqttClient.disconnect()
 
-    def SetRedisConnection(self,redisHost: str,redisPort: int,redisDb: str):
-        self._redis = aioredis.Redis(
-            host=redisHost,
-            port=redisPort,
-            db=redisDb,
-            encoding="utf-8",
-            decode_responses=True,
-            socket_keepalive=True,
-        )
+    async def SetRedisConnection(self,redisHost: str,redisPort: int,redisDb: str):
+        self._redis = await redis.from_url(f'redis://{redisHost}:{redisPort}/{redisDb}')
         logging.info(f"SetRedisConnections! {redisHost}:{redisPort}:{redisDb}")
+        await self._redis.close()
 
     def OrderCallBack(self,*args):
         loop.call_soon_threadsafe(self._oderQueue.put_nowait, args)
@@ -602,9 +596,7 @@ async def start_server(port=6789):
 def __start_wss_server(port:int=6789,callers:Caller=Caller(),pool_size:int=50,debug:int=logging.WARNING,
     with_redis:bool=False,redisHost:str=None,redisPort:int=6379,redisDb:str="0",
     with_mqtt:bool=False,mqttHost:str=None,mqttUser:str="",mqttPassword:str=""):
-    WebsocketsHandler.SetCallers(callers)
-    if with_redis:
-        WebsocketsHandler.SetRedisConnection(redisHost,redisPort,redisDb)
+    WebsocketsHandler.SetCallers(callers)    
     logger = logging.getLogger()
     logger.setLevel(debug)
     if debug == logging.DEBUG:
@@ -613,6 +605,8 @@ def __start_wss_server(port:int=6789,callers:Caller=Caller(),pool_size:int=50,de
     try:
         if with_mqtt:
             loop.create_task(WebsocketsHandler.SetMqttConnection(mqttHost,mqttUser,mqttPassword))
+        if with_redis:
+            loop.create_task(WebsocketsHandler.SetRedisConnection(redisHost,redisPort,redisDb))
         loop.create_task(WebsocketsHandler.EnevtWorker('EnevtWorker-1'))
         loop.create_task(WebsocketsHandler.OrderWorker('OrderWorker-1'))
         loop.create_task(WebsocketsHandler.TradeWorker('TradeWorker-1'))
