@@ -1,17 +1,18 @@
 [tool.poetry]
 name = "shioajicaller"
-version = "0.4.0.0"
+version = "0.4.1.2"
 description = "shioaj warp caller"
 authors = ["Steve Lo <info@sd.idv.tw>"]
 license = "MIT"
+repository = "https://github.com/SDpower/shioajicaller"
+readme = ["README.md", "LICENSE"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-shioaji = {extras = ["speed"], version = "^1.0.0"}
+shioaji = {extras = ["speed"], version = "^1.1.0"}
 python-dotenv = "^0.19.0"
-redis = "^3.5.3"
+redis = "^4.5.4"
 websockets = "^10.0"
-aioredis = "2.0.0"
 gmqtt = "^0.6.10"
 orjson = "^3.8.0"
 uvloop = {version = "^0.17.0", platform = "linux"}

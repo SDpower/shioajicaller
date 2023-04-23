@@ -200,8 +200,8 @@ $ shioajicaller -t redis -u YOUID -p YOU_PASSWORD
 可使用環境變數與.env擋案
 
 ```
-USER_ID=YOUID
-USER_PASSWORD=YOU_PASSWORD
+API_KEY=YOU_API_KEY
+SECRET_KEY=YOU_SECRET_KEY
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_DB=0
@@ -222,18 +222,17 @@ The most commonly used git commands are:
 shioajicaller: error: the following arguments are required: command
 
 # shioajicaller websockets --h
-shioaji version:0.3.3.dev4
-usage: main.py [-h] [-u USER_ID [USER_ID ...]] [-p USER_PASSWORD [USER_PASSWORD ...]] [-wp WEBSOCKETS_PORT] [-ps POOL_SIZE] [-wr] [-rh REDIS_HOST] [-rp REDIS_PORT]
+usage: main.py [-h] [-api API_KEY [API_KEY ...]] [-secret SECRET_KEY [SECRET_KEY ...]] [-wp WEBSOCKETS_PORT] [-ps POOL_SIZE] [-wr] [-rh REDIS_HOST] [-rp REDIS_PORT]
                [-rdb REDIS_DB] [-wm] [-mh MQTT_HOST] [-mu MQTT_USER] [-mp MQTT_PASSWORD] [-v]
 
 Websockets Server
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  -u USER_ID [USER_ID ...], --user-id USER_ID [USER_ID ...]
-                        Shioaji USER ID
-  -p USER_PASSWORD [USER_PASSWORD ...], --user-password USER_PASSWORD [USER_PASSWORD ...]
-                        Shioaji USER PASSWORD
+  -api API_KEY [API_KEY ...], --api-key API_KEY [API_KEY ...]
+                        Shioaji API_KEY
+  -secret SECRET_KEY [SECRET_KEY ...], --secret-key SECRET_KEY [SECRET_KEY ...]
+                        Shioaji SECRET_KEY
   -wp WEBSOCKETS_PORT, --websockets-port WEBSOCKETS_PORT
                         Websockets port
   -ps POOL_SIZE, --pool-size POOL_SIZE
