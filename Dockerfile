@@ -1,4 +1,4 @@
-FROM python:3.8-slim
+FROM python:3.11-slim
 
 RUN apt update && apt install -y openssl g++ wget bzip2 ca-certificates curl tzdata && \
     pip install --no-cache-dir shioajicaller && \
