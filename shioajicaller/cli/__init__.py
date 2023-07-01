@@ -15,8 +15,8 @@ logging.basicConfig(
 def update():
     parser = argparse.ArgumentParser(
         description='Update Code List')
-    parser.add_argument('-api', '--api-key', nargs='+', help='Shioaji API_KEY')
-    parser.add_argument('-secret', '--secret-key', nargs='+' , help='Shioaji SECRET_KEY')
+    parser.add_argument('-api', '--api-key', type=str, default='', help='Shioaji API_KEY')
+    parser.add_argument('-secret', '--secret-key', type=str, default='' , help='Shioaji SECRET_KEY')
     parser.add_argument('-t', '--type', default='csv', help='output type csv or redis')
     parser.add_argument('-rh', '--redis-host', default='127.0.0.1', help='redis host')
     parser.add_argument('-rp', '--redis-port',type=int, default=6379, help='redis port')
@@ -50,8 +50,8 @@ def update():
 def websockets():
     parser = argparse.ArgumentParser(
         description='Websockets Server')
-    parser.add_argument('-api', '--api-key', nargs='+', help='Shioaji API_KEY')
-    parser.add_argument('-secret', '--secret-key', nargs='+' , help='Shioaji SECRET_KEY')
+    parser.add_argument('-api', '--api-key', type=str, default='', help='Shioaji API_KEY')
+    parser.add_argument('-secret', '--secret-key', type=str, default='' , help='Shioaji SECRET_KEY')
     parser.add_argument('-wp', '--websockets-port',type=int, default=6789, help='Websockets port')
     parser.add_argument('-ps', '--pool-size', type=int, default=50, help='pool size')
     parser.add_argument('-wr', '--with-redis', action="store_true", help='with redis publish.')
