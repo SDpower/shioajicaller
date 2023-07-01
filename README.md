@@ -177,23 +177,23 @@ docker run -d \
 這裡說明範例，參數避免暴露請自行建立.env檔案就可以不用給帳號密碼參數。
 
 ```
-USER_ID=YOUID
-USER_PASSWORD=YOU_PASSWORD
+API_KEY= YOU_API_KEY
+SECRET_KEY= YOU_SECRET_KEY
 ```
 ### 執行範例
 ```
 $ python main.py update --help
-$ python main.py update -u YOUID -p YOU_PASSWORD
+$ python main.py update -api YOU_API_KEY -secret YOU_SECRET_KEY
 ```
 ### 直接執行cli
 ```
 $ shioajicaller update
-$ shioajicaller -u YOUID -p YOU_PASSWORD
+$ shioajicaller -api YOU_API_KEY -secret YOU_SECRET_KEY
 ```
 ### 新增 redis
 ```
 $ shioajicaller update -rh 127.0.0.1 -rp 6379 -rdb 0 -t redis
-$ shioajicaller -t redis -u YOUID -p YOU_PASSWORD
+$ shioajicaller -t redis -api YOU_API_KEY -secret YOU_SECRET_KEY
 ```
 ### ENV範例
 
