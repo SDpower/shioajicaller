@@ -509,6 +509,11 @@ class Caller(object):
         if (self._check_connect()):
             return self._api.scanners(**kwargs)
 
+    def GetApiUsage(self):
+        if (self._check_connect()):
+            return self._api.usage()
+        return False
+
     def __del__(self):
         if self._connected:
             self._api.logout()

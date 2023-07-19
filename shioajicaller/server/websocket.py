@@ -444,6 +444,11 @@ class WebsocketsHandler():
         cmd =  {"cmd":"GetOrderList","wsclient":wsclient}
         loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
 
+    async def cmdGetApiUsage(self,wsclient):
+        # {"cmd":"GetApiUsage"}
+        cmd =  {"cmd":"GetApiUsage","wsclient":wsclient}
+        loop.call_soon_threadsafe(self._cmdQueue.put_nowait, cmd)
+
     async def cmdUpdateOrderById(self,wsclient,**keyword_params):
         # {"cmd":"UpdateOrderById","params":{"id":"d12b7777","price":17880.0}}
         if "id" not in keyword_params:
