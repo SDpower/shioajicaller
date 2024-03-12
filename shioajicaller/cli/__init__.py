@@ -21,7 +21,22 @@ def update():
     parser.add_argument('-rh', '--redis-host', default='127.0.0.1', help='redis host')
     parser.add_argument('-rp', '--redis-port',type=int, default=6379, help='redis port')
     parser.add_argument('-rdb', '--redis-db',type=int, default=0, help='reis db')
+    parser.add_argument('-rkp', '--redis-db-prefix',type=str, default='', help='reis key prefix')
+    parser.add_argument("-v", "--verbosity", action="count",
+                    help="increase output verbosity")
+    
     args = parser.parse_args(sys.argv[2:])
+
+    if args.verbosity == 1:
+        debug = logging.INFO
+    elif args.verbosity == 2:
+        debug = logging.DEBUG
+    else:
+        debug = logging.WARNING
+
+    logger = logging.getLogger()
+    logger.setLevel(debug)
+
     callers = Caller()
     callers.SetAccount(apiKey= args.api_key ,secretKey= args.secret_key)
     if (args.type == 'csv'):
@@ -44,7 +59,7 @@ def update():
         else:
             db = args.redis_db
 
-        __update_codes_redis(callers,host,port,db)
+        __update_codes_redis(callers,host,port,db,args.redis_db_prefix)
     print('Done!')
 
 def websockets():
@@ -111,6 +126,9 @@ def websockets():
         debug = logging.DEBUG
     else:
         debug = logging.WARNING
+
+    logger = logging.getLogger()
+    logger.setLevel(debug)
 
     print(f'Start Websockets Server Port:{wsport}')
     if args.api_key != None and args.secret_key != None:
