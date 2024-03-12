@@ -6,7 +6,7 @@
 # Option 選擇權
 # Indexs 指數
 
-import os
+import os,sys,time
 import redis
 import orjson
 import csv
@@ -17,8 +17,7 @@ IndexsROW = namedtuple('Indexs', [
                         'exchange',
                         'code',
                         'symbol',
-                        'name',
-                        'currency'])
+                        'name'])
 
 StockROW = namedtuple('Stock', [
                         'exchange',
@@ -26,7 +25,6 @@ StockROW = namedtuple('Stock', [
                         'symbol',
                         'name',
                         'category',
-                        'currency',
                         'unit',
                         'limit_up',
                         'limit_down',
@@ -73,23 +71,46 @@ def to_csv(result,path):
 def toFutureRowData(result,data):
     if (data != None):
         for item in data:
-            if item["underlying_code"]:
+            underlying_code = ""
+            try:
                 underlying_code = item["underlying_code"]
-            else:
-                underlying_code = ""
-            result.append(FutureRow(
-                item["code"],
-                item["symbol"],
-                item["name"],
-                item["category"],
-                item["delivery_month"],
-                item["underlying_kind"],
-                underlying_code,
-                item["unit"],
-                item["limit_up"],
-                item["limit_down"],
-                item["reference"],
-                item["update_date"]))
+            except:
+                pass
+
+            update_date = ""
+            try:
+                update_date = item["update_date"]
+            except:
+                pass
+            
+            limit_up = ''
+            try:
+                limit_up = item["limit_up"]
+            except:
+                pass
+
+            limit_down = ''
+            try:
+                limit_down = item["limit_down"]
+            except:
+                pass
+
+            try:
+                result.append(FutureRow(
+                    item["code"],
+                    item["symbol"],
+                    item["name"],
+                    item["category"],
+                    item["delivery_month"],
+                    item["underlying_kind"],
+                    underlying_code,
+                    item["unit"],
+                    limit_up,
+                    limit_down,
+                    item["reference"],
+                    update_date))
+            except Exception as ex:
+                print(f'toFutureRowData error:{ex}')
 
 def toOptionRowData(result,data):
     if (data != None):
@@ -110,91 +131,117 @@ def toOptionRowData(result,data):
 def toStockRowData(result,data):
     if (data != None):
         for item in data:
-            result.append(StockROW(
-                item["exchange"],
-                item["code"],
-                item["symbol"],
-                item["name"],
-                item["category"],
-                item["currency"],
-                item["unit"],
-                item["limit_up"],
-                item["limit_down"],
-                item["reference"],
-                item["update_date"],
-                item["day_trade"]))
+            try:
+                result.append(StockROW(
+                    item["exchange"],
+                    item["code"],
+                    item["symbol"],
+                    item["name"],
+                    item["category"],
+                    item["unit"],
+                    item["limit_up"],
+                    item["limit_down"],
+                    item["reference"],
+                    item["update_date"],
+                    item["day_trade"]))
+            except:
+                result.append(StockROW(
+                    item["exchange"],
+                    item["code"],
+                    item["symbol"],
+                    item["name"],
+                    item["category"],
+                    item["unit"],
+                    item["limit_up"],
+                    item["limit_down"],
+                    item["reference"],
+                    item["update_date"],
+                    'No'))
 
 def toIndexRowData(result,data):
     if (data != None):
-        for code in data:
+        for Contract in data:
             result.append(IndexsROW(
-                data[code]["exchange"],
-                data[code]["code"],
-                data[code]["symbol"],
-                data[code]["name"],
-                data[code]["currency"]
+                Contract["exchange"],
+                Contract["code"],
+                Contract["symbol"],
+                Contract["name"],
             ))
 
-def clear_redis(redisHost: str,redisPort: int,redisDb: str,prefix = 'stock'):
+def clear_redis(redisHost: str,redisPort: int,redisDb: str,prefix: str='Stocks'):
     rServer= redis.StrictRedis(redisHost,redisPort,redisDb)
     for key in rServer.scan_iter(f"{prefix}:*"):
         rServer.delete(key)
 
-def to_redis(results,redisHost: str,redisPort: int,redisDb: str,prefix = 'stock'):
+def to_redis(results,redisHost: str,redisPort: int,redisDb: str,prefix: str='Stocks'):
     if (results == None):
         return
-    rServer= redis.StrictRedis(redisHost,redisPort,redisDb)
+    rServer= redis.StrictRedis(redisHost,redisPort,redisDb)    
     for item in results:
-        if prefix == "indexs":
-            key = f'{prefix}:{item.exchange}:{item.code}'
-        elif prefix != "stock":
-            key = f'{prefix}:{item.category}:{item.code}'
-        else:
-            key = f'{prefix}:{item.exchange}:{item.code}'
-        
-        if prefix == "indexs":
-            jstr = orjson.dumps(item._asdict(), default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC)
-        else:
-            jstr = orjson.dumps(item, default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC)
-        setObj = orjson.loads(jstr)
-        rServer.hset(key,mapping=setObj)        
-        if prefix == "stock" and item.category !="00" and item.category !="":
-            key = f'{prefix}:{item.category}:{item.exchange}:{item.code}'
-            rServer.hset(key,mapping=setObj)
+        try:
+            key=""
+            if prefix[-6:] == "Indexs":
+                key = f'{prefix}:{item.exchange}:{item.code}'
+            elif prefix[-6:] != "Stocks":
+                key = f'{prefix}:{item.category}:{item.code}'
+            else:
+                key = f'{prefix}:{item.exchange}:{item.code}'
 
-def __update_codes_redis(callers: Caller,redisHost: str,redisPort: int,redisDb: str):
+            jstr = orjson.dumps(item._asdict(), default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC)
+            setObj = orjson.loads(jstr)
+            rServer.hset(key,mapping=setObj)
+            if prefix[-6:] == "Stocks" and item.category !="00" and item.category !="":
+                key = f'{prefix}:{item.category}:{item.exchange}:{item.code}'
+                rServer.hset(key,mapping=setObj)
+        except Exception as ex:
+            print(f'error to_redis {ex}')
+
+def __update_codes_redis(callers: Caller,redisHost: str,redisPort: int,redisDb: str,prefix: str=""):
     callers.Login()
 
     resultIndexs= []
-    IndexsData = callers.Contracts(type="Indexs")["_code2contract"]
-    toIndexRowData(resultIndexs,IndexsData)
+    IndexsDataTSE = callers.Contracts(type="Indexs",code="TSE")
+    IndexsDataOTC = callers.Contracts(type="Indexs",code="OTC")
+    toIndexRowData(resultIndexs,IndexsDataTSE)
+    toIndexRowData(resultIndexs,IndexsDataOTC)
     if len(resultIndexs) > 0:
-        clear_redis(redisHost,redisPort,redisDb,prefix='indexs')
-        to_redis(resultIndexs, redisHost,redisPort,redisDb,prefix="indexs")
+        clear_redis(redisHost,redisPort,redisDb,prefix=f"{prefix}Indexs")
+        to_redis(resultIndexs, redisHost,redisPort,redisDb,prefix=f"{prefix}Indexs")
 
+    resultStock=[]
     TSEdata = callers.getContractsStocks("TSE")
     OTCdata = callers.getContractsStocks("OTC")
-    if TSEdata != None and OTCdata != None :
+    toStockRowData(resultStock,TSEdata)
+    toStockRowData(resultStock,OTCdata)
+    if len(resultStock) > 0:
         clear_redis(redisHost,redisPort,redisDb)
-        to_redis(TSEdata, redisHost,redisPort,redisDb)
-        to_redis(OTCdata, redisHost,redisPort,redisDb)
+        to_redis(resultStock, redisHost,redisPort,redisDb,prefix=f"{prefix}Stocks")
+    
+    resultFutures=[]
     Futures = callers.getContractsFutures()
     if Futures != None :
-        clear_redis(redisHost,redisPort,redisDb,prefix='futures')
+        clear_redis(redisHost,redisPort,redisDb,prefix=f"{prefix}Futures")
         for Fitems in Futures:
-            to_redis(Fitems, redisHost,redisPort,redisDb,prefix='futures')
+            toFutureRowData(resultFutures,Fitems)
+        to_redis(resultFutures, redisHost,redisPort,redisDb,prefix=f"{prefix}Futures")
+    
+    resultOptions=[]
     Options = callers.getContractsOptions()
     if Options != None :
-        clear_redis(redisHost,redisPort,redisDb,prefix='options')
+        clear_redis(redisHost,redisPort,redisDb,prefix=f"{prefix}Options")
         for Oitems in Options:
-            to_redis(Oitems, redisHost,redisPort,redisDb,prefix='options')
+            toOptionRowData(resultOptions,Oitems)
+        to_redis(resultOptions, redisHost,redisPort,redisDb,prefix=f"{prefix}Options")
+    print("Update done.")
 
 
 def __update_codes(callers: Caller):
     callers.Login()
     resultIndexs=[]
-    IndexsData = callers.Contracts(type="Indexs")["_code2contract"]    
-    toIndexRowData(resultIndexs,IndexsData)
+    IndexsDataTSE = callers.Contracts(type="Indexs",code="TSE")
+    IndexsDataOTC = callers.Contracts(type="Indexs",code="OTC")
+    toIndexRowData(resultIndexs,IndexsDataTSE)
+    toIndexRowData(resultIndexs,IndexsDataOTC)
     to_csv(resultIndexs, 'IndexsTWSE.csv')
     resultStock=[]
     TSEdata = callers.getContractsStocks("TSE")
@@ -215,6 +262,7 @@ def __update_codes(callers: Caller):
         for Oitems in Options:
             toOptionRowData(resultOptions,Oitems)
         to_csv(resultOptions, 'Options.csv')
+    print("Update done.")
 
 
 if __name__ == '__main__':

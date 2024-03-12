@@ -198,19 +198,25 @@ class Caller(object):
     def Contracts(self,type:str="",code:str=""):
         if (type == None or type ==""):
             return False
-        if (self._check_connect()):            
+        if (self._check_connect()):
+            contract_types = {
+                'Indexs': self._api.Contracts.Indexs,
+                'Stocks': self._api.Contracts.Stocks,
+                'Futures': self._api.Contracts.Futures,
+                'Options': self._api.Contracts.Options,
+            }
             if (code == None or code ==""):
-                contract = self._api.Contracts[type]
+                contract = contract_types.get(type,None)
                 if contract != None:
                     return contract
                 else:
                     return False
             else:
-                contract = self._api.Contracts[type][code]
+                contract = contract_types.get(type,None)
                 if contract != None:
-                    return contract
+                    return contract[code]
                 else:
-                    return False    
+                    return False
         else:
             return False
 
