@@ -9,6 +9,7 @@ import websockets
 from gmqtt import Client as MQTTClient
 import uvloop
 from ..caller import Caller
+from ..codes import update as Codes
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -510,11 +511,32 @@ class WebsocketsHandler():
 
     async def cmdGetContracts(self,wsclient,**keyword_params):
         # {"cmd":"GetContracts","params":{"type":"Stocks","code":"2330"}}
-        # {"cmd":"GetContracts","params":{"type":"Futures","code":"TXFB2"}}
-        # {"cmd":"GetContracts","params":{"type":"Options","code":"TXO17500C2"}}
-        # {"cmd":"GetContracts","params":{"type":"Indexs","code":"001"}}
-        ret = {"type": "response", "cmd": f'GetContracts', "ret": self._callers.Contracts(**keyword_params)}
-        await wsclient.send(orjson.dumps(ret, default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC).decode())
+        # {"cmd":"GetContracts","params":{"type":"Futures","code":"TXFC4"}}
+        # {"cmd":"GetContracts","params":{"type":"Options","code":"TXO14900D4"}}
+        # {"cmd":"GetContracts","params":{"type":"Indexs","code":"001"}}          
+        try:
+            result = self._callers.Contracts(**keyword_params)
+            retStr = ""
+            if keyword_params["type"] == "Stocks" :
+                contract = Codes.StockRowData(result)
+                ret = {"type": "response", "cmd": f'GetContracts', "ret": contract._asdict()}
+                retStr = orjson.dumps(ret, default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC).decode()
+            if keyword_params["type"] == "Futures" :
+                contract = Codes.FutureRowData(result)
+                ret = {"type": "response", "cmd": f'GetContracts', "ret": contract._asdict()}
+                retStr = orjson.dumps(ret, default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC).decode()
+            if keyword_params["type"] == "Options" :
+                contract = Codes.OptionRowData(result)
+                ret = {"type": "response", "cmd": f'GetContracts', "ret": contract._asdict()}
+                retStr = orjson.dumps(ret, default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC).decode()
+            if keyword_params["type"] == "Indexs" :
+                contract = Codes.IndexRowData(result)
+                ret = {"type": "response", "cmd": f'GetContracts', "ret": contract._asdict()}
+                retStr = orjson.dumps(ret, default=lambda obj: obj.__dict__, option=orjson.OPT_NAIVE_UTC).decode()
+            await wsclient.send(retStr)
+        except Exception as ex:
+            retStr = orjson.dumps({"error": "dumps error.","message": ex}, option=orjson.OPT_NAIVE_UTC).decode()
+            await wsclient.send(retStr)
 
     async def cmdSubscribeFutures(self,wsclient,**keyword_params):
         # {"cmd":"SubscribeFutures","params":{"code":"TXFJ1","quote_type":"tick"}}
@@ -602,8 +624,6 @@ def __start_wss_server(port:int=6789,callers:Caller=Caller(),pool_size:int=50,de
     with_redis:bool=False,redisHost:str=None,redisPort:int=6379,redisDb:str="0",
     with_mqtt:bool=False,mqttHost:str=None,mqttUser:str="",mqttPassword:str=""):
     WebsocketsHandler.SetCallers(callers)    
-    logger = logging.getLogger()
-    logger.setLevel(debug)
     if debug == logging.DEBUG:
         loop.set_debug(True)
     task = None

@@ -68,105 +68,119 @@ def to_csv(result,path):
             for r in result:
                 writer.writerow([_ for _ in r])
 
+def FutureRowData(item):
+    underlying_code = ""
+    try:
+        underlying_code = item["underlying_code"]
+    except:
+        pass
+
+    update_date = ""
+    try:
+        update_date = item["update_date"]
+    except:
+        pass
+    
+    limit_up = ''
+    try:
+        limit_up = item["limit_up"]
+    except:
+        pass
+
+    limit_down = ''
+    try:
+        limit_down = item["limit_down"]
+    except:
+        pass
+
+    try:
+        return FutureRow(
+            item["code"],
+            item["symbol"],
+            item["name"],
+            item["category"],
+            item["delivery_month"],
+            item["underlying_kind"],
+            underlying_code,
+            item["unit"],
+            limit_up,
+            limit_down,
+            item["reference"],
+            update_date)
+    except Exception as ex:
+        print(f'AppendtoFutureRowData error:{ex}')
+
 def toFutureRowData(result,data):
     if (data != None):
         for item in data:
-            underlying_code = ""
-            try:
-                underlying_code = item["underlying_code"]
-            except:
-                pass
+            retData = FutureRowData(item)
+            if retData != None:
+                result.append(retData)
 
-            update_date = ""
-            try:
-                update_date = item["update_date"]
-            except:
-                pass
-            
-            limit_up = ''
-            try:
-                limit_up = item["limit_up"]
-            except:
-                pass
-
-            limit_down = ''
-            try:
-                limit_down = item["limit_down"]
-            except:
-                pass
-
-            try:
-                result.append(FutureRow(
-                    item["code"],
-                    item["symbol"],
-                    item["name"],
-                    item["category"],
-                    item["delivery_month"],
-                    item["underlying_kind"],
-                    underlying_code,
-                    item["unit"],
-                    limit_up,
-                    limit_down,
-                    item["reference"],
-                    update_date))
-            except Exception as ex:
-                print(f'toFutureRowData error:{ex}')
-
+def OptionRowData(item):
+    return OptionRow(
+        item["code"],
+        item["symbol"],
+        item["name"],
+        item["category"],
+        item["delivery_month"],
+        item["strike_price"],
+        item["option_right"],
+        item["underlying_kind"],
+        item["limit_up"],
+        item["limit_down"],
+        item["update_date"])
+    
 def toOptionRowData(result,data):
     if (data != None):
         for item in data:
-            result.append(OptionRow(
-                item["code"],
-                item["symbol"],
-                item["name"],
-                item["category"],
-                item["delivery_month"],
-                item["strike_price"],
-                item["option_right"],
-                item["underlying_kind"],
-                item["limit_up"],
-                item["limit_down"],
-                item["update_date"]))
+            result.append(OptionRowData(item))
+
+def StockRowData(item):
+    try:
+        return StockROW(
+            item["exchange"],
+            item["code"],
+            item["symbol"],
+            item["name"],
+            item["category"],
+            item["unit"],
+            item["limit_up"],
+            item["limit_down"],
+            item["reference"],
+            item["update_date"],
+            item["day_trade"])
+    except:
+        return StockROW(
+            item["exchange"],
+            item["code"],
+            item["symbol"],
+            item["name"],
+            item["category"],
+            item["unit"],
+            item["limit_up"],
+            item["limit_down"],
+            item["reference"],
+            item["update_date"],
+            'No')
 
 def toStockRowData(result,data):
     if (data != None):
         for item in data:
-            try:
-                result.append(StockROW(
-                    item["exchange"],
-                    item["code"],
-                    item["symbol"],
-                    item["name"],
-                    item["category"],
-                    item["unit"],
-                    item["limit_up"],
-                    item["limit_down"],
-                    item["reference"],
-                    item["update_date"],
-                    item["day_trade"]))
-            except:
-                result.append(StockROW(
-                    item["exchange"],
-                    item["code"],
-                    item["symbol"],
-                    item["name"],
-                    item["category"],
-                    item["unit"],
-                    item["limit_up"],
-                    item["limit_down"],
-                    item["reference"],
-                    item["update_date"],
-                    'No'))
+            result.append(StockRowData(item))
+
+def IndexRowData(item):
+    return IndexsROW(
+        item["exchange"],
+        item["code"],
+        item["symbol"],
+        item["name"],
+    )
 
 def toIndexRowData(result,data):
     if (data != None):
         for Contract in data:
-            result.append(IndexsROW(
-                Contract["exchange"],
-                Contract["code"],
-                Contract["symbol"],
-                Contract["name"],
-            ))
+            result.append(IndexRowData(Contract))
 
 def clear_redis(redisHost: str,redisPort: int,redisDb: str,prefix: str='Stocks'):
     rServer= redis.StrictRedis(redisHost,redisPort,redisDb)
@@ -214,7 +228,7 @@ def __update_codes_redis(callers: Caller,redisHost: str,redisPort: int,redisDb: 
     toStockRowData(resultStock,TSEdata)
     toStockRowData(resultStock,OTCdata)
     if len(resultStock) > 0:
-        clear_redis(redisHost,redisPort,redisDb)
+        clear_redis(redisHost,redisPort,redisDb,prefix=f"{prefix}Stocks")
         to_redis(resultStock, redisHost,redisPort,redisDb,prefix=f"{prefix}Stocks")
     
     resultFutures=[]
