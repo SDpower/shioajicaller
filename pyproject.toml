@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "shioajicaller"
-version = "0.4.2.0"
+version = "0.4.2.1"
 description = "shioaj warp caller"
 authors = ["Steve Lo <info@sd.idv.tw>"]
 license = "MIT"
@@ -8,7 +8,7 @@ repository = "https://github.com/SDpower/shioajicaller"
 readme = ["README.md", "LICENSE"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.10"
 shioaji = {extras = ["speed"], version = "^1.2.3"}
 python-dotenv = "^0.19.0"
 redis = "^4.5.4"

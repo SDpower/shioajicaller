@@ -1,4 +1,4 @@
-FROM python:3.11 as builder
+FROM python:3.12 as builder
 RUN mkdir /usr/app
 WORKDIR /usr/app
 RUN python -m venv /usr/app/venv
@@ -9,7 +9,7 @@ RUN apt update && apt install -y openssl g++ wget bzip2 ca-certificates curl tzd
     apt-get clean && \
     rm -rf /var/lib/{apt,dpkg,cache,log}/
 
-FROM python:3.11-slim
+FROM python:3.12-slim
 RUN mkdir /usr/app
 WORKDIR /usr/app
 
