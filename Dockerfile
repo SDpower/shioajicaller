@@ -4,8 +4,8 @@ WORKDIR /usr/app
 RUN python -m venv /usr/app/venv
 ENV PATH="/usr/app/venv/bin:$PATH"
 
-RUN apt update && apt install -y openssl g++ wget bzip2 ca-certificates curl tzdata && \
-    pip install --no-cache-dir shioajicaller && \
+RUN apt update && apt install -y openssl gcc g++ wget bzip2 ca-certificates curl tzdata && \
+    pip install --upgrade pip && pip install --no-cache-dir shioajicaller && \
     apt-get clean && \
     rm -rf /var/lib/{apt,dpkg,cache,log}/
 
