@@ -94,7 +94,6 @@ def FutureRowData(item):
         pass
 
     try:
-        reference = item["reference"] if "reference" in item else ""
         return FutureRow(
             item["code"],
             item["symbol"],
@@ -106,7 +105,7 @@ def FutureRowData(item):
             item["unit"],
             limit_up,
             limit_down,
-            reference,
+            item["reference"],
             update_date)
     except Exception as ex:
         print(f'AppendtoFutureRowData error:{ex}')
